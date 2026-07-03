@@ -138,6 +138,7 @@ class LocalTerminalProvider(
             withTimeout(timeoutMs) {
                 shell.mutex.withLock {
                     val token = UUID.randomUUID().toString()
+                    Log.d(TAG, "Hidden exec command started: key=$executorKey token=$token timeoutMs=$timeoutMs command=${command.lineSequence().firstOrNull().orEmpty().take(200)}")
                     val wrappedCommand = buildHiddenExecEnvelope(command, token)
                     withContext(Dispatchers.IO) {
                         shell.writer.write(wrappedCommand)
@@ -266,6 +267,7 @@ class LocalTerminalProvider(
                         val chunk =
                             shell.outputChannel.receiveCatching().getOrNull()
                                 ?: break
+                        logHiddenExecChunk(shell.key, "ready", chunk)
                         builder.append(chunk)
                         if (builder.indexOf(READY_MARKER) >= 0) {
                             break
@@ -317,6 +319,7 @@ class LocalTerminalProvider(
                 withTimeoutOrNull((deadline - System.currentTimeMillis()).coerceAtLeast(1L)) {
                     shell.outputChannel.receiveCatching().getOrNull()
                 } ?: break
+            logHiddenExecChunk(shell.key, token, chunk)
             builder.append(chunk)
             if (builder.indexOf(endMarkerPrefix) >= 0) {
                 break
@@ -522,6 +525,20 @@ class LocalTerminalProvider(
             append("rm -f \"\$__operit_hidden_script\"\n")
             append("printf '%s:%s\\n' '$END_MARKER_PREFIX$token' \"\$__operit_hidden_rc\"\n")
         }
+    }
+
+    private fun logHiddenExecChunk(
+        executorKey: String,
+        token: String,
+        chunk: String
+    ) {
+        chunk.lineSequence()
+            .filter { it.isNotBlank() }
+            .forEach { line ->
+                line.chunked(3000).forEach { part ->
+                    Log.d(TAG, "Hidden exec output [$executorKey][$token]: $part")
+                }
+            }
     }
 
     private fun buildProcessBuilder(
