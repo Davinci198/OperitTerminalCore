@@ -91,6 +91,12 @@ class AnsiScanner(private val input: String) {
             } // RI
             'Z' -> { next(); AnsiSequence.SingleEscape('Z')
             } // DECID
+            // Charset designation: ESC ( B, ESC ) B, ESC * B, ESC + B - safely ignore
+            '(', ')', '*', '+' -> {
+                next() // consume '(' / ')' / '*' / '+'
+                if (hasNext()) next() // consume charset like 'B', '0', 'A'
+                AnsiSequence.Unknown(input.substring(start, position))
+            }
             else -> {
                 val unknownChar = next()
                 AnsiSequence.Unknown(input.substring(start, position))
