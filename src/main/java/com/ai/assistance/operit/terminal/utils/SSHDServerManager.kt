@@ -13,6 +13,7 @@ import org.apache.sshd.sftp.server.SftpSubsystemFactory
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
+import java.net.InetAddress
 import java.nio.file.Paths
 import java.security.Security
 
@@ -92,7 +93,8 @@ class SSHDServerManager private constructor(private val context: Context) {
             server.passwordAuthenticator = PasswordAuthenticator { username, password, session ->
                 val authenticated = username == sshConfig.localSshUsername && 
                                   password == sshConfig.localSshPassword
-                Log.d(TAG, "Authentication attempt - username: $username, success: $authenticated")
+                // Never log credentials or usernames on auth paths.
+                Log.d(TAG, "Authentication attempt, success: $authenticated")
                 authenticated
             }
             
@@ -102,6 +104,11 @@ class SSHDServerManager private constructor(private val context: Context) {
             // 配置文件系统工厂 - 设置根目录为外部存储
             val sdcardPath = Paths.get(PRootMountMapping.currentEmulatedStoragePath())
             server.fileSystemFactory = VirtualFileSystemFactory(sdcardPath)
+            
+            // Bind to loopback only: this server exists for the reverse tunnel
+            // scenario and is reached through localhost. Binding all interfaces
+            // would expose password auth (default ubuntu/ubuntu) to the LAN.
+            server.host = InetAddress.getLoopbackAddress().hostAddress
             
             // 启动服务器
             server.start()

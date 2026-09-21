@@ -62,13 +62,19 @@ class SourceManager(context: Context) {
     
     // 保存自定义源
     fun saveCustomSource(pm: PackageManagerType, source: MirrorSource) {
+        // URLs end up in shell scripts and apt config: strip whitespace that
+        // could break out of the surrounding heredoc/quotes.
+        val sanitized = source.copy(
+            name = source.name.trim(),
+            url = source.url.trim().replace(Regex("\\s+"), "")
+        )
         val customSources = getCustomSources(pm).toMutableList()
         // 如果已存在相同ID的源，替换它；否则添加
-        val index = customSources.indexOfFirst { it.id == source.id }
+        val index = customSources.indexOfFirst { it.id == sanitized.id }
         if (index >= 0) {
-            customSources[index] = source
+            customSources[index] = sanitized
         } else {
-            customSources.add(source)
+            customSources.add(sanitized)
         }
         
         val key = when (pm) {
@@ -120,12 +126,16 @@ class SourceManager(context: Context) {
     // 获取当前源
     fun getSelectedSource(pm: PackageManagerType): MirrorSource {
         val id = getSelectedSourceId(pm)
-        return when (pm) {
-            PackageManagerType.APT -> aptSources.find { it.id == id }!!
-            PackageManagerType.PIP -> pipSources.find { it.id == id }!!
-            PackageManagerType.NPM -> npmSources.find { it.id == id }!!
-            PackageManagerType.RUST -> rustSources.find { it.id == id }!!
+        val sources = when (pm) {
+            PackageManagerType.APT -> aptSources
+            PackageManagerType.PIP -> pipSources
+            PackageManagerType.NPM -> npmSources
+            PackageManagerType.RUST -> rustSources
         }
+        // The selected id can outlive its source (custom source deleted from
+        // settings, renamed builtin). Falling back to the first built-in keeps
+        // the terminal startable instead of crashing in generateStartScript.
+        return sources.find { it.id == id } ?: sources.first()
     }
 
     // 保存选择的源ID
