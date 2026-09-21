@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -248,7 +249,9 @@ class LocalTerminalProvider(
 
         val readyResult = awaitHiddenExecReady(shell)
         if (!readyResult.isOk) {
-            closeHiddenExecShell(executorKey)
+            // The shell was never added to hiddenExecShells, so closing by key
+            // would be a no-op and would leak the process and its reader.
+            closeShellInstance(shell)
             throw IllegalStateException(
                 readyResult.error.ifBlank { "Hidden exec shell did not become ready" }
             )
@@ -341,13 +344,21 @@ class LocalTerminalProvider(
             )
         }
 
-        cancelHiddenExecCommand(rawOutput, token)
+        // Give the command a short settle window to flush what it produced so
+        // far, then tear it down. The partial output is returned to the caller
+        // instead of being discarded with the timeout.
+        val collected = collectHiddenExecTimeoutOutput(shell, token, rawOutput)
+        cancelHiddenExecCommand(collected, token)
+        if (collected.indexOf(endMarkerPrefix) >= 0) {
+            // The command finished within the settle window: parse the real result.
+            return parseHiddenExecOutput(collected, token)
+        }
         return HiddenExecResult(
-            output = extractHiddenExecOutput(rawOutput, token),
+            output = extractHiddenExecOutput(collected, token),
             exitCode = -1,
             state = HiddenExecResult.State.TIMEOUT,
-            error = "Hidden exec command timed out after ${timeoutMs}ms",
-            rawOutputPreview = rawOutput.takeLast(1200)
+            error = "Hidden exec command timed out after ${timeoutMs}ms (partial output retained)",
+            rawOutputPreview = collected.takeLast(1200)
         )
     }
 
@@ -430,14 +441,14 @@ class LocalTerminalProvider(
         return builder.toString()
     }
 
-    private fun cancelHiddenExecCommand(rawOutput: String, token: String) {
+    private suspend fun cancelHiddenExecCommand(rawOutput: String, token: String) {
         val pid = extractHiddenExecPid(rawOutput, token) ?: return
         runCatching {
             Os.kill((-pid).toInt(), OsConstants.SIGTERM)
         }.onFailure { error ->
             Log.w(TAG, "Failed to send SIGTERM to hidden exec process group $pid", error)
         }
-        Thread.sleep(100)
+        delay(100)
         runCatching {
             Os.kill((-pid).toInt(), OsConstants.SIGKILL)
         }.onFailure { error ->
@@ -482,13 +493,17 @@ class LocalTerminalProvider(
 
     private suspend fun closeHiddenExecShell(executorKey: String) {
         hiddenExecShells.remove(executorKey)?.let { shell ->
-            withContext(Dispatchers.IO) {
-                runCatching { shell.writer.close() }
-                runCatching { shell.process.destroy() }
-                runCatching { shell.readJob.cancel() }
-                runCatching { shell.outputChannel.close() }
-            }
+            closeShellInstance(shell)
             Log.d(TAG, "Closed hidden exec shell: $executorKey")
+        }
+    }
+
+    private suspend fun closeShellInstance(shell: HiddenExecShell) {
+        withContext(Dispatchers.IO) {
+            runCatching { shell.writer.close() }
+            runCatching { shell.process.destroy() }
+            runCatching { shell.readJob.cancel() }
+            runCatching { shell.outputChannel.close() }
         }
     }
 

@@ -92,6 +92,10 @@ Java_com_ai_assistance_operit_terminal_Pty_00024Companion_createSubprocess(JNIEn
     }
 
     if (pid == 0) { // Child process
+        // Start a new session so the shell becomes its own process group
+        // leader. Kotlin-side destroy() then targets the whole group with
+        // -pid, taking children (apt, proot, ...) down together with it.
+        setsid();
         if (chdir(cwd) != 0) {
             fprintf(stderr, "chdir to %s failed: %s\n", cwd, strerror(errno));
             _exit(1);

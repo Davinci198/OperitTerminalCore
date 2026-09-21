@@ -73,22 +73,23 @@ class SessionManager(private val terminalManager: TerminalManager) {
     
     /**
      * 关闭会话
-     */
-    fun closeSession(sessionId: String) {
-        _state.update { currentState ->
-            val sessionToClose = currentState.sessions.find { it.id == sessionId }
-            
-            sessionToClose?.let { session ->
-                try {
-                    // 清理资源
-                    session.readJob?.cancel()
-                    session.sessionWriter?.close()
-                    terminalManager.closeTerminalSession(session.id)
-                } catch (e: Exception) {
-                    Log.e("SessionManager", "Error cleaning up session", e)
-                }
+     */    fun closeSession(sessionId: String) {
+        // Capture the session before the state transition: cleanup must run
+        // exactly once and outside _state.update (the update lambda can be
+        // re-run under contention, which would double-close resources).
+        val sessionToClose = _state.value.sessions.find { it.id == sessionId }
+        sessionToClose?.let { session ->
+            try {
+                // 清理资源
+                session.readJob?.cancel()
+                session.sessionWriter?.close()
+                terminalManager.closeTerminalSession(session.id)
+            } catch (e: Exception) {
+                Log.e("SessionManager", "Error closing session: $sessionId", e)
             }
-            
+        }
+
+        _state.update { currentState ->
             val updatedSessions = currentState.sessions.filter { it.id != sessionId }
             val newCurrentSessionId = if (currentState.currentSessionId == sessionId) {
                 updatedSessions.firstOrNull()?.id

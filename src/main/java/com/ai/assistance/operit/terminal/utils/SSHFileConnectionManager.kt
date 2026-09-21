@@ -143,8 +143,16 @@ class SSHFileConnectionManager private constructor(private val context: Context)
                     // 生成连接ID
                     val connectionId = params.connectionId ?: generateConnectionId(params)
                     
-                    // 如果已存在同ID连接，先断开
-                    connections[connectionId]?.let { disconnect(connectionId) }
+                    // If a stale entry exists (e.g. the remote session died), tear
+                    // it down inline. disconnect() must NOT be called here: it
+                    // acquires connectionMutex again and Kotlin's Mutex is not
+                    // reentrant, which would deadlock the caller.
+                    connections.remove(connectionId)?.let { stale ->
+                        runCatching { teardownConnectionResources(stale) }
+                        if (connectionId == currentConnectionId) {
+                            currentConnectionId = null
+                        }
+                    }
                     
                     Log.d(TAG, "Connecting to SSH: ${params.username}@${params.host}:${params.port}")
                     
@@ -247,25 +255,7 @@ class SSHFileConnectionManager private constructor(private val context: Context)
                     
                     val connection = connections.remove(id)
                     if (connection != null) {
-                        // 卸载存储
-                        unmountStorage(connection)
-                        
-                        // 关闭端口转发
-                        if (connection.portForwardingActive) {
-                            teardownPortForwarding(connection)
-                        }
-                        
-                        // 关闭反向隧道
-                        if (connection.reverseTunnelActive) {
-                            teardownReverseTunnel(connection)
-                            sshdServerManager.stopServer()
-                        }
-                        
-                        // 关闭SFTP
-                        connection.fileSystemProvider.close()
-                        
-                        // 断开SSH会话
-                        connection.session.disconnect()
+                        teardownConnectionResources(connection)
                         
                         // 如果关闭的是当前连接，切换到其他连接
                         if (id == currentConnectionId) {
@@ -290,10 +280,41 @@ class SSHFileConnectionManager private constructor(private val context: Context)
      */
     suspend fun disconnectAll() {
         connectionMutex.withLock {
-            connections.keys.toList().forEach { disconnect(it) }
+            connections.keys.toList().forEach { id ->
+                connections.remove(id)?.let { connection ->
+                    runCatching { teardownConnectionResources(connection) }
+                }
+            }
             currentConnectionId = null
             Log.d(TAG, "All SSH connections closed")
         }
+    }
+
+    /**
+     * Release every resource owned by a connection. Must be called while
+     * holding connectionMutex (or before the entry becomes visible again) —
+     * the public disconnect() wrappers take the mutex; this helper must not.
+     */
+    private suspend fun teardownConnectionResources(connection: SSHConnection) {
+        // 卸载存储
+        unmountStorage(connection)
+        
+        // 关闭端口转发
+        if (connection.portForwardingActive) {
+            teardownPortForwarding(connection)
+        }
+        
+        // 关闭反向隧道
+        if (connection.reverseTunnelActive) {
+            teardownReverseTunnel(connection)
+            sshdServerManager.stopServer()
+        }
+        
+        // 关闭SFTP
+        connection.fileSystemProvider.close()
+        
+        // 断开SSH会话
+        connection.session.disconnect()
     }
     
     /**
@@ -514,11 +535,35 @@ class SSHFileConnectionManager private constructor(private val context: Context)
                 
                 val channel = connection.session.openChannel("exec") as com.jcraft.jsch.ChannelExec
                 channel.setCommand(mountCommands)
-                channel.connect()
-                
-                val output = channel.inputStream.bufferedReader().readText()
-                val errorOutput = channel.errStream.bufferedReader().readText()
+                // Bound the whole mount: a hanging sshfs (network flaps with
+                // -o reconnect) would otherwise block the caller forever. Poll
+                // instead of blocking reads so the deadline can actually fire.
+                channel.connect(10_000)
+                val outputBuilder = StringBuilder()
+                val errorBuilder = StringBuilder()
+                val mountBuffer = ByteArray(4096)
+                val mountDeadline = System.currentTimeMillis() + 60_000L
+                while (System.currentTimeMillis() < mountDeadline) {
+                    while (channel.inputStream.available() > 0) {
+                        val count = channel.inputStream.read(mountBuffer)
+                        if (count <= 0) break
+                        outputBuilder.append(String(mountBuffer, 0, count, Charsets.UTF_8))
+                    }
+                    while (channel.errStream.available() > 0) {
+                        val count = channel.errStream.read(mountBuffer)
+                        if (count <= 0) break
+                        errorBuilder.append(String(mountBuffer, 0, count, Charsets.UTF_8))
+                    }
+                    if (channel.isClosed) break
+                    delay(20)
+                }
                 channel.disconnect()
+                if (!channel.isClosed) {
+                    Log.e(TAG, "Mount command timed out for connection: $id")
+                    return@withContext Result.failure(Exception("Storage mount timed out"))
+                }
+                val output = outputBuilder.toString()
+                val errorOutput = errorBuilder.toString().trimEnd()
                 
                 Log.d(TAG, "Mount output: $output")
                 if (errorOutput.isNotEmpty()) {

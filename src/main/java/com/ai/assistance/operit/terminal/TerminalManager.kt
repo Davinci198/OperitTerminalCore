@@ -55,7 +55,6 @@ class TerminalManager private constructor(
     private val usrDir: File = File(filesDir, "usr")
     private val binDir: File = File(usrDir, "bin")
     private val nativeLibDir: String = context.applicationInfo.nativeLibraryDir
-    private val activeSessions = ConcurrentHashMap<String, TerminalSession>()
     private val closingSessions = ConcurrentHashMap.newKeySet<String>()
     
     // SharedPreferences for reading settings
@@ -179,7 +178,10 @@ class TerminalManager private constructor(
 
         if (success == null) {
             Log.e(TAG, "Session initialization timeout for session: ${newSession.id}")
-            // 初始化失败，移除会话
+            // Mark the session as closing so the still-running startSession/init
+            // chain stops instead of orphaning a PTY process for a session that
+            // no longer exists, then remove it from the visible state.
+            closingSessions.add(newSession.id)
             sessionManager.closeSession(newSession.id)
             throw Exception("Session initialization timeout")
         }
@@ -435,6 +437,14 @@ class TerminalManager private constructor(
             try {
                 Log.d(TAG, "Starting session...")
                 closingSessions.remove(sessionId)
+
+                // The session may have been removed while environment init was
+                // still running (init timeout or user close). Starting a PTY for
+                // a session that no longer exists would orphan the process.
+                if (sessionManager.getSession(sessionId) == null) {
+                    Log.w(TAG, "Session $sessionId no longer exists; skipping start")
+                    return@launch
+                }
 
                 // 获取单例的终端提供者
                 val provider = getTerminalProvider()
@@ -1303,12 +1313,6 @@ $prootBindSetup
                 Log.e(TAG, "Error closing session via provider", e)
             }
         }
-
-        activeSessions[sessionId]?.let { session ->
-            session.process.destroy()
-            activeSessions.remove(sessionId)
-            Log.d(TAG, "Closed and removed session: $sessionId")
-        }
     }
 
     private fun handleRegularCommand(command: String, session: com.ai.assistance.operit.terminal.data.TerminalSessionData, commandId: String) {
@@ -1349,9 +1353,6 @@ $prootBindSetup
         }
         terminalProvider = null
         
-        activeSessions.keys.toList().forEach { sessionId ->
-            closeTerminalSession(sessionId)
-        }
         sessionManager.cleanup()
         Log.d(TAG, "Prepared terminal manager for maintenance.")
     }

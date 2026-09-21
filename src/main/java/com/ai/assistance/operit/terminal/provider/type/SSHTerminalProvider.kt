@@ -208,9 +208,14 @@ class SSHTerminalProvider(
     private fun buildSshCommand(): String {
         val cmd = StringBuilder()
         
+        // Single-quote a value for shell consumption: ' -> '\'' . The command
+        // is eval'd by the shell inside the PTY, so unescaped quotes/spaces in
+        // passwords or key paths would break the command or inject shell code.
+        fun sq(value: String): String = "'" + value.replace("'", "'\\''") + "'"
+        
         // 如果是密码认证，使用sshpass自动输入密码
         if (sshConfig.authType == SSHAuthType.PASSWORD && sshConfig.password != null) {
-            cmd.append("sshpass -p '${sshConfig.password}' ")
+            cmd.append("sshpass -p ${sq(sshConfig.password)} ")
         }
         
         cmd.append("ssh")
@@ -222,7 +227,7 @@ class SSHTerminalProvider(
             // 注意：这里的路径是Android文件系统中的路径。
             // proot已将/storage/emulated/0挂载为/sdcard，因此如果密钥在外部存储中，路径需要相应调整。
             // 为简单起见，我们假设用户提供的路径在proot环境中是可访问的。
-            cmd.append(" -i \"${sshConfig.privateKeyPath}\"")
+            cmd.append(" -i ${sq(sshConfig.privateKeyPath)}")
         }
         
         cmd.append(" -o StrictHostKeyChecking=no") // 避免首次连接时的主机密钥检查提示

@@ -355,12 +355,21 @@ class OutputProcessor(
             true
         } else {
             val trimmed = line.trim()
-            val isFallbackPrompt = trimmed.endsWith("$") ||
+            // The fallback shapes are weak heuristics: any output line ending in
+            // '#', '$' or looking like user@host would match. Gating them on an
+            // in-flight command prevents output such as comments, JSON or echo
+            // text from being mistaken for the shell prompt, which would finish
+            // the command early and start the next queued one too soon.
+            val hasExecutingCommand = session.currentExecutingCommand?.isExecuting == true ||
+                    session.initState != SessionInitState.READY
+            val isFallbackPrompt = hasExecutingCommand && (
+                    trimmed.endsWith("$") ||
                     trimmed.endsWith("#") ||
                     trimmed.endsWith("$ ") ||
                     trimmed.endsWith("# ") ||
                     Regex(".*@[a-zA-Z0-9.\\-]+\\s?:\\s?~?/?.*[#$]\\s*$").matches(trimmed) ||
                     Regex("root@[a-zA-Z0-9.\\-]+:\\s?~?/?.*#\\s*$").matches(trimmed)
+                    )
 
             if (isFallbackPrompt) {
                 val regex = Regex(""".*:\s*(~?/?.*)\s*[#$]$""")

@@ -43,6 +43,18 @@ open class Pty(
     companion object {
         private const val TAG = "Pty"
 
+        /**
+         * Best-effort signal delivery, mirroring the previous inline
+         * sendSignal calls including their exception-swallowing behavior.
+         */
+        private fun signal(pid: Int, signal: Int) {
+            try {
+                android.os.Process.sendSignal(pid, signal)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+
         init {
             try {
                 System.loadLibrary("pty")
@@ -70,37 +82,30 @@ open class Pty(
             // We need a Process object to manage the subprocess lifetime
             val dummyProcess = object : Process() {
                 override fun destroy() {
-                    // Send SIGHUP to the process group to ensure all child processes are terminated
-                    try {
-                        android.os.Process.sendSignal(pid, 1) // SIGHUP
-                    } catch (e: Exception) {
-                        // Ignore
-                    }
-                    
-                    // Send SIGKILL to ensure the process is dead immediately
-                    try {
-                        android.os.Process.sendSignal(pid, 9) // SIGKILL
-                    } catch (e: Exception) {
-                        // Ignore
-                    }
+                    // The child runs in its own session (setsid in pty.c), so the
+                    // negative pid targets the whole process group: the shell AND
+                    // the children it spawned (apt, proot, build tools, ...).
+                    signal(-pid, 1) // SIGHUP to the group
+                    signal(pid, 1)  // SIGHUP to the shell itself
+                    signal(-pid, 9) // SIGKILL to the group
+                    signal(pid, 9)  // SIGKILL to the shell itself
                 }
 
                 override fun exitValue(): Int {
-                    // We can't get the actual exit value without a blocking waitpid call,
-                    // which we do in waitFor(). The contract of exitValue() is to throw
-                    // an exception if the process is still running.
-                    try {
-                        // sendSignal(pid, 0) checks if the process exists.
-                        // If it doesn't throw, the process is still alive.
+                    // Contract: throw IllegalThreadStateException while the process
+                    // is still alive. sendSignal(pid, 0) succeeds when the process
+                    // exists, so "no error" means "still alive". When the signal
+                    // fails the process is gone, but the real exit status cannot be
+                    // recovered without the waitpid we no longer control, so 0 is
+                    // the documented fallback for an already-terminated process.
+                    val alive = runCatching {
                         android.os.Process.sendSignal(pid, 0)
-                        throw IllegalThreadStateException("Process hasn't exited")
-                    } catch (e: Exception) {
-                        // The process is dead. We don't have the exit code without waiting,
-                        // so we can't fulfill the contract perfectly. Returning 0 is a
-                        // reasonable fallback for a terminated process where the specific
-                        // exit code isn't available.
-                        return 0
+                        true
+                    }.getOrDefault(false)
+                    if (alive) {
+                        throw IllegalThreadStateException("Process hasn't exited (pid=$pid)")
                     }
+                    return 0
                 }
 
                 override fun getErrorStream(): InputStream? = null
