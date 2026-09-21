@@ -67,7 +67,7 @@ class FtpServerManager private constructor(private val context: Context) {
             // Bind to loopback only: credentials are static (see FTP_PASSWORD)
             // and the server is meant for local tooling; exposing it to the LAN
             // would give write access to the whole Ubuntu rootfs.
-            listenerFactory.serverAddress = InetAddress.getLoopbackAddress()
+            listenerFactory.serverAddress = InetAddress.getLoopbackAddress().hostAddress
             
             // 设置监听端口
             listenerFactory.port = FTP_PORT
