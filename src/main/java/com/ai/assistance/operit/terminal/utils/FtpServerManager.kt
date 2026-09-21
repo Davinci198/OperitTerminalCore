@@ -15,7 +15,7 @@ import org.apache.ftpserver.usermanager.impl.BaseUser
 import org.apache.ftpserver.usermanager.impl.WritePermission
 import org.apache.ftpserver.DataConnectionConfigurationFactory
 import java.io.File
-import java.net.NetworkInterface
+import java.net.InetAddress
 import java.util.*
 
 class FtpServerManager private constructor(private val context: Context) {
@@ -64,6 +64,11 @@ class FtpServerManager private constructor(private val context: Context) {
             val serverFactory = FtpServerFactory()
             val listenerFactory = ListenerFactory()
             
+            // Bind to loopback only: credentials are static (see FTP_PASSWORD)
+            // and the server is meant for local tooling; exposing it to the LAN
+            // would give write access to the whole Ubuntu rootfs.
+            listenerFactory.serverAddress = InetAddress.getLoopbackAddress().hostAddress
+            
             // 设置监听端口
             listenerFactory.port = FTP_PORT
 
@@ -95,11 +100,7 @@ class FtpServerManager private constructor(private val context: Context) {
             ftpServer = serverFactory.createServer()
             ftpServer?.start()
             
-            Log.i(TAG, "FTP服务器已启动")
-            Log.i(TAG, "服务器地址: ${getLocalIpAddress()}:$FTP_PORT")
-            Log.i(TAG, "用户名: $FTP_USERNAME")
-            Log.i(TAG, "密码: $FTP_PASSWORD")
-            Log.i(TAG, "根目录: $ubuntuRootPath")
+            Log.i(TAG, "FTP server started on ${getLocalIpAddress()}:$FTP_PORT (root: $ubuntuRootPath)")
             
             true
         } catch (e: Exception) {

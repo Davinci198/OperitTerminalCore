@@ -131,7 +131,14 @@ class CacheManager(private val context: Context) {
                 }
             } catch (_: Exception) {
             }
-            process.waitFor()
+            // A hanging su (interactive prompt, denied request) would block the
+            // reset flow forever; give it 15s and kill it on timeout.
+            if (!process.waitFor(15, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroy()
+                Log.w(TAG, "Reset: su command timed out after 15s")
+                return null
+            }
+            process.exitValue()
         } catch (_: Exception) {
             null
         }
