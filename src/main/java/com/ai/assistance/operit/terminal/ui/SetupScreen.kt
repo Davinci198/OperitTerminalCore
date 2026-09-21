@@ -104,7 +104,7 @@ fun SetupScreen(
                     packages = listOf(
                         PackageItem("ssh", context.getString(com.ai.assistance.operit.terminal.R.string.package_ssh_client_name), "ssh", context.getString(com.ai.assistance.operit.terminal.R.string.package_ssh_client_desc)),
                         PackageItem("sshpass", context.getString(com.ai.assistance.operit.terminal.R.string.package_sshpass_name), "sshpass", context.getString(com.ai.assistance.operit.terminal.R.string.package_sshpass_desc)),
-                        PackageItem("openssh-server", "OpenSSH 服务器", "openssh-server", "用于反向隧道挂载本地文件系统")
+                        PackageItem("openssh-server", context.getString(com.ai.assistance.operit.terminal.R.string.setup_openssh_server_name), "openssh-server", context.getString(com.ai.assistance.operit.terminal.R.string.setup_openssh_server_desc))
                     )
                 ),
                 PackageCategory(
@@ -291,14 +291,14 @@ fun SetupScreen(
                     )
                     Column {
                         Text(
-                            text = "SSH 模式警告",
+                            text = context.getString(com.ai.assistance.operit.terminal.R.string.setup_ssh_mode_warning_title),
                             color = Color(0xFFFFA500),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "本页面在 SSH 模式下检测不准确，请自行手动配置 pnpm 和 python。",
+                            text = context.getString(com.ai.assistance.operit.terminal.R.string.setup_ssh_mode_warning_message),
                             color = Color.White,
                             fontSize = 12.sp,
                             lineHeight = 16.sp

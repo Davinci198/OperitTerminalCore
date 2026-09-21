@@ -232,4 +232,62 @@
     <string name="terminal_accessibility_session_tab">Session "%1$s"</string>
     <string name="terminal_accessibility_current_session_tab">Current session "%1$s"</string>
     <string name="terminal_accessibility_close_session_tab">Close session "%1$s"</string>
+    <!-- SSH Config Screen (extracted from hardcoded strings) -->
+    <string name="ssh_config_screen_title">SSH Connection Settings</string>
+    <string name="ssh_config_none">No SSH configuration yet</string>
+    <string name="ssh_config_set_button">Set SSH Configuration</string>
+    <string name="ssh_config_auth_method">Auth method: %s</string>
+    <string name="ssh_config_auth_password">Password</string>
+    <string name="ssh_config_auth_public_key">Public key</string>
+    <string name="ssh_config_exit_hint">Tip: Use exit to leave SSH and return to the local terminal</string>
+    <string name="ssh_config_edit">Edit</string>
+    <string name="ssh_config_delete">Delete</string>
+    <string name="ssh_config_confirm_delete_title">Confirm Deletion</string>
+    <string name="ssh_config_confirm_delete_message">Are you sure you want to delete this SSH configuration?</string>
+    <string name="ssh_config_cancel">Cancel</string>
+    <string name="ssh_config_add_title">Add SSH Configuration</string>
+    <string name="ssh_config_edit_title">Edit SSH Configuration</string>
+    <string name="ssh_config_host_label">Host address</string>
+    <string name="ssh_config_port_label">Port</string>
+    <string name="ssh_config_username_label">Username</string>
+    <string name="ssh_config_password_auth">Password authentication</string>
+    <string name="ssh_config_public_key_auth">Public key authentication</string>
+    <string name="ssh_config_password_label">Password</string>
+    <string name="ssh_config_private_key_path_label">Private key path</string>
+    <string name="ssh_config_passphrase_label">Key passphrase (optional)</string>
+    <string name="ssh_config_keepalive_enable">Enable keep-alive</string>
+    <string name="ssh_config_keepalive_desc">Prevents the connection from dropping when idle</string>
+    <string name="ssh_config_keepalive_interval_label">Keep-alive interval (seconds)</string>
+    <string name="ssh_config_keepalive_hint">💡 Recommended: 30-60 seconds; a keep-alive packet is sent to the server at this interval</string>
+    <string name="ssh_config_reverse_mount_enable">Enable reverse mount</string>
+    <string name="ssh_config_reverse_mount_desc">Allows the remote server to mount the local file system</string>
+    <string name="ssh_config_reverse_mount_info_title">📋 Reverse mount notes</string>
+    <string name="ssh_config_reverse_mount_local_req">• Local requirement: openssh-server (install via Environment Setup)</string>
+    <string name="ssh_config_reverse_mount_remote_req">• Remote requirement: sshfs (install on the remote server)</string>
+    <string name="ssh_config_reverse_mount_usage">Once enabled, the remote server can access local files via ~/storage and ~/sdcard</string>
+    <string name="ssh_config_remote_tunnel_port_label">Remote tunnel port</string>
+    <string name="ssh_config_local_ssh_port_label">Local SSH port</string>
+    <string name="ssh_config_local_ssh_username_label">Local SSH username</string>
+    <string name="ssh_config_local_ssh_password_label">Local SSH password</string>
+    <string name="ssh_config_save">Save</string>
+    <!-- SetupScreen extras (extracted from hardcoded strings) -->
+    <string name="setup_openssh_server_name">OpenSSH Server</string>
+    <string name="setup_openssh_server_desc">Used by the reverse tunnel to mount the local file system</string>
+    <string name="setup_ssh_mode_warning_title">SSH mode warning</string>
+    <string name="setup_ssh_mode_warning_message">Detection on this page is inaccurate in SSH mode; please configure pnpm and python manually.</string>
+    <!-- Misc (extracted from hardcoded strings) -->
+    <string name="terminal_menu_copy">Copy</string>
+    <string name="rust_mirror_updated_message">Rust mirror updated to: %s. It will be used the next time Rust is installed.</string>
+    <string name="sshd_server_info_running">SSHD server running\nPort: %1$s\nUsername: %2$s\nRoot directory: %3$s (/sdcard)</string>
+    <string name="sshd_server_not_running">SSHD server not running</string>
+    <!-- Mirror display names (shown in source selection dialog) -->
+    <string name="mirror_name_tuna">Tsinghua</string>
+    <string name="mirror_name_bfsu">BFSU</string>
+    <string name="mirror_name_aliyun">Aliyun</string>
+    <string name="mirror_name_ustc">USTC</string>
+    <string name="mirror_name_sjtu">SJTU</string>
+    <string name="mirror_name_taobao">Taobao</string>
+    <string name="mirror_name_tencent">Tencent</string>
+    <string name="mirror_name_huawei">Huawei</string>
+    <string name="mirror_name_official">Official</string>
 </resources> 

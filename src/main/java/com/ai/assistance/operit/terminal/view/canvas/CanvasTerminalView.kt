@@ -2465,7 +2465,7 @@ class CanvasTerminalView @JvmOverloads constructor(
             }
 
             override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
-                menu.add(0, 1, 0, "复制")
+                menu.add(0, 1, 0, context.getString(R.string.terminal_menu_copy))
                 return true
             }
 

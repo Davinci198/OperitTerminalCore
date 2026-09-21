@@ -161,14 +161,14 @@ class SSHDServerManager private constructor(private val context: Context) {
      */
     fun getServerInfo(): String {
         return if (isServerRunning() && currentConfig != null) {
-            """
-            SSHD服务器运行中
-            端口: ${currentConfig!!.localSshPort}
-            用户名: ${currentConfig!!.localSshUsername}
-            根目录: ${PRootMountMapping.currentEmulatedStoragePath()} (/sdcard)
-            """.trimIndent()
+            context.getString(
+                com.ai.assistance.operit.terminal.R.string.sshd_server_info_running,
+                currentConfig!!.localSshPort,
+                currentConfig!!.localSshUsername,
+                PRootMountMapping.currentEmulatedStoragePath()
+            )
         } else {
-            "SSHD服务器未运行"
+            context.getString(com.ai.assistance.operit.terminal.R.string.sshd_server_not_running)
         }
     }
 }
