@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SetupScreen -->
+    <string name="setup_title">Configurare mediu</string>
+    <string name="setup_subtitle">Selectează mediile de dezvoltare și uneltele de instalat (instalare paralelă suportată)</string>
+    <string name="skip">Sari peste</string>
+    <string name="start_setup">Pornește configurarea</string>
+    <string name="select_all">Selectează tot</string>
+    <string name="expand">Extinde</string>
+    <string name="collapse">Restrânge</string>
+    <string name="installed">Instalat</string>
+    <string name="operit_required">Necesar Operit</string>
+
+    <!-- Dialog -->
+    <string name="setup_dialog_title">Atenție</string>
+    <string name="setup_dialog_message">Configurarea mediului urmează să înceapă și poate dura ceva timp. Încearcă să păstrezi aplicația în prim-plan sau în fereastră flotantă pentru o configurare fără întreruperi.\n\nDacă configurarea este întreruptă neașteptat, nu-ți face griji. Când revii pe această pagină și pornești configurarea, ea continuă automat de la progresul anterior.</string>
+    <string name="dialog_confirm">Am înțeles</string>
+    <string name="dialog_cancel">Anulare</string>
+
+    <!-- Package Categories -->
+    <string name="category_nodejs_name">Mediu Node.js</string>
+    <string name="category_nodejs_desc">Node.js și mediu de dezvoltare frontend</string>
+    <string name="category_python_name">Mediu Python</string>
+    <string name="category_python_desc">Mediu de dezvoltare Python</string>
+    <string name="category_java_name">Mediu Java</string>
+    <string name="category_java_desc">Mediu de dezvoltare Java</string>
+    <string name="category_rust_name">Mediu Rust (Cargo)</string>
+    <string name="category_rust_desc">Mediu de dezvoltare Rust și manager de pachete</string>
+    <string name="category_go_name">Mediu Go</string>
+    <string name="category_go_desc">Mediu pentru limbajul de programare Go</string>
+    <string name="category_ssh_name">Unelte SSH</string>
+    <string name="category_ssh_desc">Client SSH și unelte de autentificare cu parolă</string>
+
+    <!-- Package Items -->
+    <string name="package_nodejs_name">Node.js</string>
+    <string name="package_nodejs_desc">Runtime JavaScript</string>
+    <string name="package_pnpm_name">PNPM</string>
+    <string name="package_pnpm_desc">Manager de pachete rapid și TypeScript</string>
+    <string name="package_python_link_name">Legătură Python</string>
+    <string name="package_python_link_desc">Leagă comanda python la python3</string>
+    <string name="package_python_venv_name">Mediu virtual</string>
+    <string name="package_python_venv_desc">Suport pentru medii virtuale Python</string>
+    <string name="package_python_pip_name">Pip</string>
+    <string name="package_python_pip_desc">Manager de pachete Python</string>
+    <string name="package_uv_name">uv</string>
+    <string name="package_uv_desc">Instalator de pachete Python extrem de rapid, scris în Rust</string>
+    <string name="package_openjdk_name">OpenJDK 17</string>
+    <string name="package_openjdk_desc">Mediu de dezvoltare Java 17</string>
+    <string name="package_gradle_name">Gradle</string>
+    <string name="package_gradle_desc">Unealtă modernă de automatizare a build-urilor</string>
+    <string name="package_rust_name">Rust &amp; Cargo</string>
+    <string name="package_rust_desc">Instalează toolchain-ul Rust prin rustup</string>
+    <string name="package_go_name">Go</string>
+    <string name="package_go_desc">Limbajul de programare Go</string>
+    <string name="package_ssh_client_name">Client SSH</string>
+    <string name="package_ssh_client_desc">Client pentru conexiuni SSH</string>
+    <string name="package_sshpass_name">sshpass</string>
+    <string name="package_sshpass_desc">Unealtă de autentificare SSH cu parolă</string>
+
+    <!-- SettingsScreen -->
+    <string name="settings_title">Setări</string>
+    <string name="back">Înapoi</string>
+
+    <!-- FTP Server Section -->
+    <string name="ftp_server_title">Server de fișiere FTP</string>
+    <string name="ftp_server_stopping">Se oprește…</string>
+    <string name="ftp_server_stop">Oprește</string>
+    <string name="ftp_server_start">Pornește</string>
+    <string name="ftp_server_tip">💡 Sfat: folosește un client FTP pentru a te conecta la adresa de mai sus și accesa sistemul de fișiere Ubuntu</string>
+    <string name="ftp_server_suggestion">📱 Sugestie: activează fereastra flotantă pentru a menține aplicația activă și serverul FTP disponibil</string>
+
+    <!-- Storage Management Section -->
+    <string name="storage_management_title">Gestionarea stocării</string>
+    <string name="ubuntu_environment_size">Dimensiunea mediului Ubuntu: %s</string>
+    <string name="refresh_size_calculating">Se calculează…</string>
+    <string name="refresh_size">Reîmprospătează</string>
+    <string name="reset_environment">Resetează</string>
+
+    <!-- Project Section -->
+    <string name="project_address_title">Depozitul proiectului</string>
+    <string name="project_name">AAswordman/OperitTerminal</string>
+    <string name="visit_project">Vizitează</string>
+    <string name="check_updates">Verifică</string>
+    <string name="update_now">Actualizează</string>
+
+    <!-- Reset Environment Dialog -->
+    <string name="reset_dialog_title">⚠️ Operațiune periculoasă</string>
+    <string name="reset_dialog_description">Această operațiune va șterge complet mediul virtual Ubuntu, inclusiv:</string>
+    <string name="reset_dialog_item1">• Toate pachetele software instalate</string>
+    <string name="reset_dialog_item2">• Datele utilizatorului și fișierele de configurare</string>
+    <string name="reset_dialog_item3">• Fișierele de sistem și setările mediului</string>
+    <string name="reset_dialog_warning">După operațiune, mediul Ubuntu trebuie reinițializat, ceea ce poate dura câteva minute.</string>
+    <string name="reset_dialog_ftp_warning">Serverul FTP va fi de asemenea oprit. Sigur continui?</string>
+    <string name="reset_confirm">Confirmă resetarea</string>
+
+    <!-- SettingsViewModel -->
+    <string name="cache_size_default">Apasă pentru reîmprospătare</string>
+    <string name="update_status_default">Apasă pentru verificarea actualizărilor</string>
+    <string name="ftp_server_not_running">Serverul FTP nu rulează</string>
+    <string name="cache_calculating">Se calculează…</string>
+    <string name="cache_calculation_cancelled">Calcul anulat</string>
+    <string name="cache_calculation_failed">Calculul a eșuat</string>
+    <string name="environment_resetting">Se resetează mediul…</string>
+    <string name="environment_reset_complete">Mediu resetat (necesită repornire)</string>
+    <string name="environment_reset_failed">Resetare eșuată: %s</string>
+    <string name="checking_updates">Se verifică actualizările…</string>
+    <string name="update_available">Actualizare disponibilă: %1$s (curentă: %2$s)</string>
+    <string name="up_to_date">La zi (%s)</string>
+    <string name="update_check_failed">Verificare eșuată: %s</string>
+    <string name="ftp_server_starting">Se pornește serverul FTP…</string>
+    <string name="ftp_server_start_failed_env">Pornire eșuată (asigură-te că mediul Ubuntu este inițializat)</string>
+    <string name="ftp_server_start_failed">Pornire eșuată: %s</string>
+    <string name="ftp_server_stopping_progress">Se oprește serverul FTP…</string>
+    <string name="ftp_server_stopped">Server FTP oprit</string>
+    <string name="ftp_server_stop_failed">Oprirea a eșuat</string>
+    <string name="ftp_server_stop_failed_with_error">Oprirea a eșuat: %s</string>
+
+    <!-- TerminalHome -->
+    <string name="confirm_delete_session">Confirmă ștergerea sesiunii</string>
+    <string name="delete_session_message">Sigur ștergi sesiunea „%s”?\n\nAceastă acțiune nu poate fi anulată și toate datele din sesiune se vor pierde definitiv.</string>
+    <string name="delete">Șterge</string>
+    <string name="cancel">Anulare</string>
+    <string name="new_session">Sesiune nouă</string>
+    <string name="close_session">Închide sesiunea</string>
+    <string name="executing">Se execută…</string>
+    <string name="interrupt_key">Ctrl+C</string>
+    <string name="interrupt">Întrerupe</string>
+    <string name="environment_setup">Configurare mediu</string>
+    <string name="terminal_exited_with_code">Terminalul s-a închis cu codul %1$d</string>
+    <string name="settings">Setări</string>
+
+    <!-- Additional new strings -->
+    <string name="initializing">Se inițializează…</string>
+    <string name="new_version_found">Versiune nouă găsită: %1$s</string>
+    <string name="update_check_failed_short">Verificarea actualizării a eșuat</string>
+    <string name="cannot_open_browser">Nu se poate deschide browserul</string>
+    <string name="ftp_server_running_info">Server FTP activ\nAdresă: %1$s:%2$s\nUtilizator: %3$s\nParolă: %4$s\nDirector rădăcină: sistemul de fișiere Ubuntu</string>
+    <string name="unknown_session">Sesiune necunoscută</string>
+
+    <!-- SSH Tools Check -->
+    <string name="ssh_tools_missing_title">Uneltele SSH nu sunt instalate</string>
+    <string name="ssh_tools_missing_message">Activarea conexiunii SSH necesită următoarele unelte:\n\n• ssh – client SSH\n• sshpass – unealtă de autentificare SSH cu parolă\n\n Mergi la pagina „Configurare mediu” pentru a instala uneltele SSH.</string>
+    <string name="go_to_setup">Mergi la configurare</string>
+    <string name="checking_ssh_tools">Se verifică uneltele SSH…</string>
+
+    <!-- Shared TMP Settings -->
+    <string name="shared_tmp_title">Director temporar partajat</string>
+    <string name="shared_tmp_enabled_desc">Activat – Android și Ubuntu partajează directorul /tmp</string>
+    <string name="shared_tmp_disabled_desc">Dezactivat – Ubuntu folosește un director /tmp separat</string>
+    <string name="shared_tmp_note">Notă: unele dispozitive pot avea probleme de compatibilitate în modul partajat. Dacă apar erori, dezactivează opțiunea</string>
+
+    <string name="chroot_mode_title">Mod chroot</string>
+    <string name="chroot_mode_enabled_desc">Activat – pornește Ubuntu prin chroot (necesită root)</string>
+    <string name="chroot_mode_disabled_desc">Dezactivat – pornește Ubuntu prin proot</string>
+    <string name="chroot_mode_note">Notă: modul chroot montează /proc, /sys, /dev (inclusiv /dev/pts) în mediul Ubuntu. Utilizatorii cu root, folosiți-l cu precauție. Acest mod necesită dispozitiv rooted și permisiune root acordată aplicației, altfel pornirea poate eșua</string>
+    <string name="chroot_mount_check">Inspectează montările</string>
+    <string name="chroot_mount_unmount">Demontează</string>
+    <string name="chroot_mount_status_idle">Montările chroot nu au fost încă inspectate</string>
+    <string name="chroot_mount_status_checking">Se inspectează montările chroot…</string>
+    <string name="chroot_mount_status_unmounting">Se demontează montările chroot…</string>
+    <string name="chroot_mount_status_none">Nu s-au detectat montări chroot active</string>
+    <string name="chroot_mount_status_detected">S-au detectat %1$d montări chroot active</string>
+    <string name="chroot_mount_status_unmounted">S-au demontat %1$d montări chroot</string>
+    <string name="chroot_mount_status_failed">Operațiunea de montare a eșuat: %1$s</string>
+    <string name="chroot_mount_details_title">Puncte de montare actuale:</string>
+
+    <!-- SSH Settings -->
+    <string name="ssh_enable_title">Activează conexiunea SSH</string>
+    <string name="ssh_use_remote_desc">Se folosește terminalul SSH la distanță</string>
+    <string name="ssh_use_local_desc">Se folosește terminalul local</string>
+    <string name="ssh_reverse_mount_enabled"> Montare inversă activată</string>
+    <string name="ssh_reverse_mount_desc">Distanța poate accesa fișierele locale prin ~/storage și ~/sdcard</string>
+    <string name="ssh_config_required">Configurează mai întâi conexiunea SSH</string>
+    <string name="openssh_missing_title">Serverul OpenSSH lipsește</string>
+    <string name="openssh_missing_desc">Activarea montării inverse necesită următoarele componente:</string>
+    <string name="openssh_local_component">✓ Local (Android): openssh-server</string>
+    <string name="openssh_go_to_install">  → Mergi la Configurare mediu pentru instalare</string>
+    <string name="openssh_remote_component">✓ Server la distanță: sshfs</string>
+    <string name="openssh_remote_install">  → Execută pe serverul la distanță:</string>
+    <string name="openssh_install_ubuntu_cmd">     apt install sshfs  # Ubuntu/Debian</string>
+    <string name="openssh_install_centos_cmd">     yum install fuse-sshfs  # CentOS/RHEL</string>
+    <string name="openssh_install_button">Instalează openssh-server</string>
+
+    <!-- Font Settings -->
+    <string name="font_settings_title">Setări font terminal</string>
+    <string name="font_size_title">Dimensiunea fontului</string>
+    <string name="target_fps_title">Frecvența de randare</string>
+    <string name="font_path_title">Calea fișierului de font</string>
+    <string name="font_name_title">Numele fontului de sistem</string>
+    <string name="font_not_set">Nesetat (se folosește fontul implicit)</string>
+    <string name="font_reset_default">Revino la implicit</string>
+    <string name="font_size_dialog_title">Setează dimensiunea fontului</string>
+    <string name="font_size_label">Dimensiune font (sp)</string>
+    <string name="target_fps_dialog_title">Setează frecvența de randare</string>
+    <string name="target_fps_label">Frecvență țintă (FPS)</string>
+    <string name="target_fps_hint">Interval: 15-120. Recomandat: 30-60. Valori mai mari sunt mai fluide, dar consumă mai multă baterie.</string>
+    <string name="font_path_dialog_title">Setează calea fișierului de font</string>
+    <string name="font_path_label">Cale fișier font</string>
+    <string name="font_path_hint">Lasă gol pentru fontul implicit</string>
+    <string name="font_name_dialog_title">Setează numele fontului de sistem</string>
+    <string name="font_name_label">Nume font de sistem</string>
+    <string name="font_name_placeholder">ex.: monospace, serif, sans-serif</string>
+    <string name="font_name_hint">Lasă gol pentru fontul implicit. Valori uzuale: monospace, serif, sans-serif</string>
+
+    <!-- Virtual Keyboard Settings -->
+    <string name="virtual_keyboard_settings_title">Setări tastatură virtuală</string>
+    <string name="virtual_keyboard_custom_title">Personalizează cele două rânduri</string>
+    <string name="virtual_keyboard_dialog_title">Editează cele două rânduri de taste</string>
+    <string name="virtual_keyboard_reset_default">Revino la implicit</string>
+    <string name="virtual_keyboard_row_one">Rândul 1</string>
+    <string name="virtual_keyboard_row_two">Rândul 2</string>
+    <string name="virtual_keyboard_key_label">Text afișat</string>
+    <string name="virtual_keyboard_key_value">Valoare trimisă</string>
+    <string name="virtual_keyboard_action_send">Trimite</string>
+    <string name="virtual_keyboard_action_ctrl">CTRL</string>
+    <string name="virtual_keyboard_action_alt">ALT</string>
+    <string name="virtual_keyboard_value_hint">Secvențe escape: \\e (ESC), \\t (Tab), \\n, \\r, \\.</string>
+
+    <!-- Source Management -->
+    <string name="source_management_title">Gestionarea surselor software</string>
+    <string name="source_current">Sursa curentă: %s</string>
+    <string name="select_source_title">Selectează sursa %s</string>
+
+    <!-- Common Actions -->
+    <string name="confirm">Confirmă</string>
+    <string name="add">Adaugă</string>
+    <string name="delete_source">Șterge</string>
+    <string name="add_custom_source_title">Adaugă sursă %s personalizată</string>
+    <string name="source_name_label">Numele sursei</string>
+    <string name="source_url_label">URL sursă</string>
+    <string name="terminal_accessibility_line">Linia %1$d: %2$s</string>
+    <string name="terminal_accessibility_session_tab">Sesiunea „%1$s”</string>
+    <string name="terminal_accessibility_current_session_tab">Sesiunea curentă „%1$s”</string>
+    <string name="terminal_accessibility_close_session_tab">Închide sesiunea „%1$s”</string>
+    <!-- SSH Config Screen (extracted from hardcoded strings) -->
+    <string name="ssh_config_screen_title">Setări conexiune SSH</string>
+    <string name="ssh_config_none">Încă nu există configurații SSH</string>
+    <string name="ssh_config_set_button">Setează configurația SSH</string>
+    <string name="ssh_config_auth_method">Metodă de autentificare: %s</string>
+    <string name="ssh_config_auth_password">Parolă</string>
+    <string name="ssh_config_auth_public_key">Cheie publică</string>
+    <string name="ssh_config_exit_hint">Sfat: folosește exit pentru a ieși din SSH și a reveni la terminalul local</string>
+    <string name="ssh_config_edit">Editează</string>
+    <string name="ssh_config_delete">Șterge</string>
+    <string name="ssh_config_confirm_delete_title">Confirmă ștergerea</string>
+    <string name="ssh_config_confirm_delete_message">Sigur ștergi această configurație SSH?</string>
+    <string name="ssh_config_cancel">Anulare</string>
+    <string name="ssh_config_add_title">Adaugă configurație SSH</string>
+    <string name="ssh_config_edit_title">Editează configurația SSH</string>
+    <string name="ssh_config_host_label">Adresa host</string>
+    <string name="ssh_config_port_label">Port</string>
+    <string name="ssh_config_username_label">Utilizator</string>
+    <string name="ssh_config_password_auth">Autentificare cu parolă</string>
+    <string name="ssh_config_public_key_auth">Autentificare cu cheie publică</string>
+    <string name="ssh_config_password_label">Parolă</string>
+    <string name="ssh_config_private_key_path_label">Calea cheii private</string>
+    <string name="ssh_config_passphrase_label">Parola cheii (opțional)</string>
+    <string name="ssh_config_keepalive_enable">Activează keep-alive</string>
+    <string name="ssh_config_keepalive_desc">Împiedică întreruperea conexiunii în timpul inactivității</string>
+    <string name="ssh_config_keepalive_interval_label">Interval keep-alive (secunde)</string>
+    <string name="ssh_config_keepalive_hint">💡 Recomandat: 30-60 de secunde; la acest interval se trimite un pachet keep-alive către server</string>
+    <string name="ssh_config_reverse_mount_enable">Activează montarea inversă</string>
+    <string name="ssh_config_reverse_mount_desc">Permite serverului la distanță să monteze sistemul de fișiere local</string>
+    <string name="ssh_config_reverse_mount_info_title">📋 Note despre montarea inversă</string>
+    <string name="ssh_config_reverse_mount_local_req">• Cerință locală: openssh-server (instalat din Configurare mediu)</string>
+    <string name="ssh_config_reverse_mount_remote_req">• Cerință la distanță: sshfs (instalat pe serverul la distanță)</string>
+    <string name="ssh_config_reverse_mount_usage">Odată activată, serverul la distanță poate accesa fișierele locale prin ~/storage și ~/sdcard</string>
+    <string name="ssh_config_remote_tunnel_port_label">Portul tunelului la distanță</string>
+    <string name="ssh_config_local_ssh_port_label">Port SSH local</string>
+    <string name="ssh_config_local_ssh_username_label">Utilizator SSH local</string>
+    <string name="ssh_config_local_ssh_password_label">Parolă SSH locală</string>
+    <string name="ssh_config_save">Salvează</string>
+    <!-- SetupScreen extras (extracted from hardcoded strings) -->
+    <string name="setup_openssh_server_name">Server OpenSSH</string>
+    <string name="setup_openssh_server_desc">Folosit de tunelul invers pentru a monta sistemul de fișiere local</string>
+    <string name="setup_ssh_mode_warning_title">Avertisment mod SSH</string>
+    <string name="setup_ssh_mode_warning_message">În modul SSH detecția de pe această pagină este inexactă; configurează manual pnpm și python.</string>
+    <!-- Misc (extracted from hardcoded strings) -->
+    <string name="terminal_menu_copy">Copiază</string>
+    <string name="rust_mirror_updated_message">Sursa Rust a fost actualizată la: %s. Va fi folosită la următoarea instalare Rust.</string>
+    <string name="sshd_server_info_running">Server SSHD activ\nPort: %1$s\nUtilizator: %2$s\nDirector rădăcină: %3$s (/sdcard)</string>
+    <string name="sshd_server_not_running">Serverul SSHD nu rulează</string>
+    <!-- Mirror display names (shown in source selection dialog) -->
+    <string name="mirror_name_tuna">Tsinghua</string>
+    <string name="mirror_name_bfsu">BFSU</string>
+    <string name="mirror_name_aliyun">Aliyun</string>
+    <string name="mirror_name_ustc">USTC</string>
+    <string name="mirror_name_sjtu">SJTU</string>
+    <string name="mirror_name_taobao">Taobao</string>
+    <string name="mirror_name_tencent">Tencent</string>
+    <string name="mirror_name_huawei">Huawei</string>
+    <string name="mirror_name_official">Oficial</string>
+</resources>

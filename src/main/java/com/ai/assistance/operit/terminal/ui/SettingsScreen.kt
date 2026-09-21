@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ai.assistance.operit.terminal.data.PackageManagerType
+import com.ai.assistance.operit.terminal.data.MirrorSource
 import com.ai.assistance.operit.terminal.data.SourceConfig
 import com.ai.assistance.operit.terminal.utils.TerminalFontConfigManager
 import androidx.compose.foundation.text.KeyboardOptions
@@ -1260,7 +1261,7 @@ private fun SourceSelectionDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(source.name, color = SettingsTheme.onSurfaceColor)
+                            Text(mirrorSourceDisplayName(source), color = SettingsTheme.onSurfaceColor)
                             Text(
                                 source.url, 
                                 color = SettingsTheme.onSurfaceVariant,
@@ -1381,4 +1382,28 @@ private fun AddCustomSourceDialog(
         },
         containerColor = SettingsTheme.surfaceColor
     )
+}
+
+/**
+ * Display name for a mirror source: resolved via string resources when a
+ * translation exists for the built-in source id; falls back to the stored name
+ * (which is also what custom sources always use).
+ */
+@Composable
+private fun mirrorSourceDisplayName(source: MirrorSource): String {
+    val resName = when (source.id) {
+        "tuna_apt", "tuna_pip", "tuna_rust" -> "mirror_name_tuna"
+        "bfsu_apt", "bfsu_pip", "bfsu_rust" -> "mirror_name_bfsu"
+        "aliyun_apt", "aliyun_pip" -> "mirror_name_aliyun"
+        "ustc_apt", "ustc_pip", "ustc_rust" -> "mirror_name_ustc"
+        "taobao_npm" -> "mirror_name_taobao"
+        "tencent_npm" -> "mirror_name_tencent"
+        "huawei_npm" -> "mirror_name_huawei"
+        "sjtu_rust" -> "mirror_name_sjtu"
+        "official_apt", "official_pip", "official_npm", "official_rust" -> "mirror_name_official"
+        else -> return source.name
+    }
+    val context = LocalContext.current
+    val resId = context.resources.getIdentifier(resName, "string", context.packageName)
+    return if (resId != 0) context.getString(resId) else source.name
 } 

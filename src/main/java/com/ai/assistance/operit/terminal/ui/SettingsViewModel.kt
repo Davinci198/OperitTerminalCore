@@ -190,7 +190,7 @@ class SettingsViewModel(
                     PackageManagerType.NPM -> sourceManager.getNpmSourceChangeCommand(it)
                     PackageManagerType.RUST -> {
                         // Rust源的更改需要通过环境变量，这里只是提示用户
-                        "echo 'Rust镜像源已更新为: ${it.name}. 下次安装Rust时将使用此源。'"
+                        "echo '${getApplication<Application>().getString(com.ai.assistance.operit.terminal.R.string.rust_mirror_updated_message, it.name)}'"
                     }
                 }
                 // 在默认会话中执行命令
