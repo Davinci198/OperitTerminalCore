@@ -295,7 +295,7 @@ class SSHFileConnectionManager private constructor(private val context: Context)
      * holding connectionMutex (or before the entry becomes visible again) —
      * the public disconnect() wrappers take the mutex; this helper must not.
      */
-    private fun teardownConnectionResources(connection: SSHConnection) {
+    private suspend fun teardownConnectionResources(connection: SSHConnection) {
         // 卸载存储
         unmountStorage(connection)
         

@@ -85,7 +85,7 @@ class SessionManager(private val terminalManager: TerminalManager) {
                 session.sessionWriter?.close()
                 terminalManager.closeTerminalSession(session.id)
             } catch (e: Exception) {
-                Log.e("SessionManager.closeSession", e)
+                Log.e("SessionManager", "Error closing session: $sessionId", e)
             }
         }
 
