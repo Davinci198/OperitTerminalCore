@@ -8,12 +8,14 @@ import com.ai.assistance.operit.terminal.provider.filesystem.SSHFileSystemProvid
 import com.ai.assistance.operit.terminal.provider.type.HiddenExecResult
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.Session
+import com.jcraft.jsch.UserInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 
@@ -182,7 +184,21 @@ class SSHFileConnectionManager private constructor(private val context: Context)
                     
                     // 配置会话
                     val sessionConfig = Properties()
-                    sessionConfig["StrictHostKeyChecking"] = "no"
+                    // TOFU host-key verification: "ask" + a UserInfo that accepts only
+                    // UNKNOWN host keys (stored persistently). A CHANGED key is rejected,
+                    // so a MITM cannot reuse a previously trusted hostname.
+                    // ("no" accepts even changed keys → full MITM exposure.)
+                    sessionConfig["StrictHostKeyChecking"] = "ask"
+                    sshSession.setUserInfo(TofuUserInfo())
+                    val knownHosts = knownHostsFile()
+                    if (knownHosts.exists()) {
+                        sshSession.setKnownHosts(knownHosts.absolutePath)
+                    } else {
+                        // Seed an empty store; JSch persists newly accepted keys here.
+                        knownHosts.parentFile?.mkdirs()
+                        knownHosts.writeText("")
+                        sshSession.setKnownHosts(knownHosts.absolutePath)
+                    }
 
                     // 配置心跳包（Keep-Alive）
                     if (config.enableKeepAlive) {
@@ -510,8 +526,7 @@ class SSHFileConnectionManager private constructor(private val context: Context)
                             ${config.localSshUsername}@localhost:/ \
                             ~/storage \
                             -o password_stdin \
-                            -o StrictHostKeyChecking=no \
-                            -o UserKnownHostsFile=/dev/null \
+                            -o StrictHostKeyChecking=accept-new \
                             -o reconnect \
                             -o ServerAliveInterval=15 \
                             -o ServerAliveCountMax=3 <<< "${config.localSshPassword}"
@@ -524,8 +539,7 @@ class SSHFileConnectionManager private constructor(private val context: Context)
                             ${config.localSshUsername}@localhost:/ \
                             ~/sdcard \
                             -o password_stdin \
-                            -o StrictHostKeyChecking=no \
-                            -o UserKnownHostsFile=/dev/null \
+                            -o StrictHostKeyChecking=accept-new \
                             -o reconnect \
                             -o ServerAliveInterval=15 \
                             -o ServerAliveCountMax=3 <<< "${config.localSshPassword}"
@@ -599,6 +613,46 @@ class SSHFileConnectionManager private constructor(private val context: Context)
     /**
      * 设置本地端口转发
      */
+    /**
+     * TOFU (trust-on-first-use) UserInfo for non-interactive SSH sessions.
+     *
+     * With StrictHostKeyChecking=ask, JSch calls promptYesNo only for a host key
+     * that is NOT in the known_hosts store (first connection) → we accept it and
+     * JSch persists it. A CHANGED host key throws JSchChangedHostKeyException
+     * before promptYesNo is reached, so a MITM cannot silently take over a
+     * previously trusted hostname.
+     */
+    private class TofuUserInfo : UserInfo {
+        override fun promptYesNo(message: String): Boolean {
+            // JSch routes BOTH unknown and changed host keys through promptYesNo
+            // when StrictHostKeyChecking=ask. Only an UNKNOWN host (first use) may
+            // be accepted; a CHANGED key must be rejected — that prompt offers to
+            // replace the stored key, which is exactly the MITM takeover path.
+            val changed = message.contains("REMOTE HOST IDENTIFICATION HAS CHANGED")
+            if (changed) {
+                Log.w(TAG, "TOFU: host key CHANGED — rejecting connection (possible MITM)")
+                return false
+            }
+            Log.i(TAG, "TOFU: accepting new host key (first use)")
+            return true
+        }
+
+        override fun promptPassword(message: String): Boolean = false
+        override fun promptPassphrase(message: String): Boolean = false
+        override fun showMessage(message: String) {
+            Log.d(TAG, "SSH: $message")
+        }
+        override fun getPassphrase(): String? = null
+        override fun getPassword(): String? = null
+    }
+
+    /** Persistent TOFU store for verified SSH host keys. */
+    private fun knownHostsFile(): File {
+        val dir = File(context.filesDir, "ssh")
+        if (!dir.exists()) dir.mkdirs()
+        return File(dir, "known_hosts")
+    }
+
     private fun setupPortForwarding(session: Session, config: SSHConfig): Boolean {
         return try {
             Log.d(TAG, "Setting up port forwarding: localhost:${config.localForwardPort} -> remote:${config.remoteForwardPort}")

@@ -99,7 +99,9 @@ dependencies {
     implementation(libs.kotlinx.serialization)
     
     // SSH 依赖
-    implementation("com.jcraft:jsch:0.1.55")
+    // mwiede fork of com.jcraft:jsch (drop-in, same package names) — adds
+    // ssh-ed25519, rsa-sha2-* and modern KEX missing from the abandoned 0.1.55.
+    implementation("com.github.mwiede:jsch:0.2.21")
     
     // FTP服务器依赖
     implementation("org.apache.ftpserver:ftpserver-core:1.2.0") {

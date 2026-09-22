@@ -31,7 +31,7 @@ class SSHConfigManager(context: Context) {
      */
     suspend fun getConfig(): SSHConfig? = withContext(Dispatchers.IO) {
         val configJson = prefs.getString(KEY_CONFIG, null)
-        Log.d(TAG, "getConfig: configJson = $configJson")
+        // Never log configJson: it contains the password and passphrase in clear text.
         
         if (configJson == null) {
             Log.d(TAG, "getConfig: No config found")
@@ -56,14 +56,16 @@ class SSHConfigManager(context: Context) {
         Log.d(TAG, "saveConfig: Saving config for ${config.username}@${config.host}:${config.port}")
         val json = toJson(config)
         val jsonString = json.toString()
-        Log.d(TAG, "saveConfig: JSON = $jsonString")
+        // Never log jsonString / verification reads: clear-text credentials.
         
         val success = prefs.edit().putString(KEY_CONFIG, jsonString).commit()
         Log.d(TAG, "saveConfig: Save result = $success")
         
         // 验证保存
         val savedJson = prefs.getString(KEY_CONFIG, null)
-        Log.d(TAG, "saveConfig: Verification read = $savedJson")
+        if (savedJson == null) {
+            Log.e(TAG, "saveConfig: verification read returned null")
+        }
     }
     
     /**
