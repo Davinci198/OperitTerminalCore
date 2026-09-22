@@ -191,14 +191,15 @@ class SSHFileConnectionManager private constructor(private val context: Context)
                     sessionConfig["StrictHostKeyChecking"] = "ask"
                     sshSession.setUserInfo(TofuUserInfo())
                     val knownHosts = knownHostsFile()
-                    if (knownHosts.exists()) {
-                        sshSession.setKnownHosts(knownHosts.absolutePath)
-                    } else {
+                    if (!knownHosts.exists()) {
                         // Seed an empty store; JSch persists newly accepted keys here.
                         knownHosts.parentFile?.mkdirs()
                         knownHosts.writeText("")
-                        sshSession.setKnownHosts(knownHosts.absolutePath)
                     }
+                    // Known-hosts lives on the shared JSch instance (mwiede fork has
+                    // no Session.setKnownHosts(String)); sessions created from it
+                    // inherit the repository and persist accepted keys to the file.
+                    jsch.setKnownHosts(knownHosts.absolutePath)
 
                     // 配置心跳包（Keep-Alive）
                     if (config.enableKeepAlive) {
