@@ -16,9 +16,10 @@ import java.util.regex.Pattern
 class UpdateChecker(private val context: Context) {
 
     companion object {
-        private const val GITHUB_API_URL = "https://api.github.com/repos/AAswordman/OperitTerminal/tags"
-        const val GITHUB_REPO_URL = "https://github.com/AAswordman/OperitTerminal"
-        const val GITHUB_RELEASES_URL = "https://github.com/AAswordman/OperitTerminal/releases"
+        // This fork is fully independent: update checks and links point to its own repo.
+        private const val GITHUB_API_URL = "https://api.github.com/repos/Davinci198/OperitTerminalCore/tags"
+        const val GITHUB_REPO_URL = "https://github.com/Davinci198/OperitTerminalCore"
+        const val GITHUB_RELEASES_URL = "https://github.com/Davinci198/OperitTerminalCore/releases"
     }
 
     sealed class UpdateResult {
