@@ -98,10 +98,17 @@ class UpdateChecker(private val context: Context) {
         if (oldVersion.replace("v", "").split('.').size >= 3) {
             return false
         }
-        // Simple version comparison, assumes vX.Y format
-        val newVersionValue = newVersion.replace("v", "").toFloatOrNull() ?: 0f
-        val oldVersionValue = oldVersion.replace("v", "").toFloatOrNull() ?: 0f
-        return newVersionValue > oldVersionValue
+        // Component-wise comparison (assumes vX.Y format): avoids the float trap
+        // where "0.10" parses as 0.1 < 0.9, making v0.10 look older than v0.9.
+        val newParts = newVersion.replace("v", "").split('.').map { it.toIntOrNull() ?: 0 }
+        val oldParts = oldVersion.replace("v", "").split('.').map { it.toIntOrNull() ?: 0 }
+        val n = maxOf(newParts.size, oldParts.size)
+        for (i in 0 until n) {
+            val a = newParts.getOrElse(i) { 0 }
+            val b = oldParts.getOrElse(i) { 0 }
+            if (a != b) return a > b
+        }
+        return false
     }
 
     private fun getCurrentAppVersion(): String {

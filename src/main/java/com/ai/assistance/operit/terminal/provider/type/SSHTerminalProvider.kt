@@ -230,7 +230,12 @@ class SSHTerminalProvider(
             cmd.append(" -i ${sq(sshConfig.privateKeyPath)}")
         }
         
-        cmd.append(" -o StrictHostKeyChecking=no") // 避免首次连接时的主机密钥检查提示
+        // Accept new host keys automatically, but keep a TOFU (trust-on-first-use)
+        // known_hosts file so subsequent connections verify the host key — with
+        // "no" any network attacker could impersonate the server (MITM).
+        // Runs inside the Ubuntu container, so the default ~/.ssh/known_hosts is
+        // used (persistent in the rootfs) — Android paths aren't visible here.
+        cmd.append(" -o StrictHostKeyChecking=accept-new")
         
         // 配置心跳包（Keep-Alive）
         if (sshConfig.enableKeepAlive) {
