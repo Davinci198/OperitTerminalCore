@@ -34,6 +34,22 @@ class OutputProcessor(
 
         private const val MAX_RAW_BUFFER_CHARS = 256 * 1024
         private const val MAX_OUTPUT_PAGES_PER_COMMAND = 100
+
+        /** Explicit directory marker some shells emit before the prompt. */
+        private val CWD_PROMPT_REGEX = Regex("<cwd>(.*)</cwd>.*[#$]")
+
+        /** 'user@host:path$' / 'root@host:path#', the shape of a default Ubuntu prompt. */
+        private val USER_HOST_PROMPT_REGEX =
+            Regex(".*@[a-zA-Z0-9.\\-]+\\s?:\\s?~?/?.*[#$]\\s*$")
+        private val ROOT_HOST_PROMPT_REGEX =
+            Regex("root@[a-zA-Z0-9.\\-]+:\\s?~?/?.*#\\s*$")
+
+        /**
+         * Bare prompt shape: one path-like token, possibly empty, terminated by '#' or '$'
+         * ('$', '#', '~$', 'ubuntu:~/src$', 'bash-5.2#'). Ordinary output such as
+         * 'Total: 100$' or an echoed '# comment' contains whitespace and does not match.
+         */
+        private val BARE_PROMPT_REGEX = Regex("^[\\w@.:/~-]*[#$]$")
     }
 
     /**
@@ -120,7 +136,7 @@ class OutputProcessor(
                 val cleanContent = AnsiUtils.stripAnsi(bufferContent)
                 
                 // 检查是否是普通 shell 提示符
-                val isShellPrompt = isPrompt(cleanContent)
+                val isShellPrompt = isPrompt(cleanContent, allowBareShape = true)
                 
                 // 使用 PTY 模式检测是否在等待输入
                 val isWaitingInput = isInteractivePrompt(cleanContent, sessionId, sessionManager)
@@ -136,7 +152,7 @@ class OutputProcessor(
                     if (isWaitingInput && !isShellPrompt) {
                         handleInteractivePrompt(sessionId, cleanContent, sessionManager)
                     } else {
-                        processLine(sessionId, bufferContent, sessionManager)
+                        processLine(sessionId, bufferContent, sessionManager, allowBareShape = true)
                     }
                     session.rawBuffer.clear()
                 }
@@ -179,10 +195,16 @@ class OutputProcessor(
         // 这样下一行会被正常处理，而不是被当作进度更新
     }
 
+    /**
+     * @param allowBareShape forwarded to [handlePrompt]: only the caller that hands us
+     *   text still sitting unterminated at the end of the buffer may set it, because
+     *   that is how a shell writes its prompt.
+     */
     private fun processLine(
         sessionId: String,
         line: String,
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
+        allowBareShape: Boolean = false
     ) {
         val session = sessionManager.getSession(sessionId) ?: return
 
@@ -215,7 +237,7 @@ class OutputProcessor(
                         currentItem.setOutput(session.currentCommandOutput.toString())
                     }
                 } else {
-                    handleReadyState(sessionId, line, sessionManager)
+                    handleReadyState(sessionId, line, sessionManager, allowBareShape)
                 }
             }
         }
@@ -257,7 +279,9 @@ class OutputProcessor(
     ) {
         val cleanLine = AnsiUtils.stripAnsi(line)
         Log.d(TAG, "handleAwaitingFirstPromptState: checking line: '$cleanLine'")
-        if (handlePrompt(sessionId, cleanLine, sessionManager)) {
+        // The very first prompt must be recognised even when it is a bare shape, otherwise
+        // the session would never reach READY. Everything after that is stricter.
+        if (handlePrompt(sessionId, cleanLine, sessionManager, allowBareShape = true)) {
             Log.d(TAG, "First prompt detected. Session is now ready.")
             sessionManager.updateSession(sessionId) { session ->
                 session.copy(initState = SessionInitState.READY)
@@ -273,7 +297,8 @@ class OutputProcessor(
     private fun handleReadyState(
         sessionId: String,
         line: String,
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
+        allowBareShape: Boolean = false
     ) {
         val cleanLine = AnsiUtils.stripAnsi(line)
         Log.d(TAG, "Stripped line: '$cleanLine'")
@@ -292,7 +317,7 @@ class OutputProcessor(
         }
 
         // 优先处理常规提示符，因为它表示命令结束
-        if (handlePrompt(sessionId, cleanLine, sessionManager)) {
+        if (handlePrompt(sessionId, cleanLine, sessionManager, allowBareShape)) {
             return
         }
 
@@ -305,20 +330,22 @@ class OutputProcessor(
 
     /**
      * 检测是否是提示符
+     *
+     * @param allowBareShape accept a bare '...#/...$' line, such as '~$' or '#', which has no
+     *   user@host part. Pass true only for text taken from the end of an unterminated buffer: a
+     *   shell prints its prompt without a trailing newline, so that is where a real prompt shows
+     *   up. On a line-terminated piece of output a bare trailing '#'/'$' is almost always data
+     *   ('total: 100$', an echoed '#' comment), so it must not count as a prompt.
      */
-    fun isPrompt(line: String): Boolean {
-        val cwdPromptRegex = Regex("<cwd>(.*)</cwd>.*[#$]")
-        if (cwdPromptRegex.containsMatchIn(line)) {
+    fun isPrompt(line: String, allowBareShape: Boolean = false): Boolean {
+        if (CWD_PROMPT_REGEX.containsMatchIn(line)) {
             return true
         }
 
         val trimmed = line.trim()
-        return trimmed.endsWith("$") ||
-                trimmed.endsWith("#") ||
-                trimmed.endsWith("$ ") ||
-                trimmed.endsWith("# ") ||
-                Regex(".*@[a-zA-Z0-9.\\-]+\\s?:\\s?~?/?.*[#$]\\s*$").matches(trimmed) ||
-                Regex("root@[a-zA-Z0-9.\\-]+:\\s?~?/?.*#\\s*$").matches(trimmed)
+        return USER_HOST_PROMPT_REGEX.matches(trimmed) ||
+                ROOT_HOST_PROMPT_REGEX.matches(trimmed) ||
+                (allowBareShape && BARE_PROMPT_REGEX.matches(trimmed))
     }
 
     /**
@@ -327,12 +354,12 @@ class OutputProcessor(
     private fun handlePrompt(
         sessionId: String,
         line: String,
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
+        allowBareShape: Boolean = false
     ): Boolean {
         val session = sessionManager.getSession(sessionId) ?: return false
 
-        val cwdPromptRegex = Regex("<cwd>(.*)</cwd>.*[#$]")
-        val match = cwdPromptRegex.find(line)
+        val match = CWD_PROMPT_REGEX.find(line)
 
         val isAPrompt = if (match != null) {
             val path = match.groups[1]?.value?.trim() ?: "~"
@@ -363,12 +390,9 @@ class OutputProcessor(
             val hasExecutingCommand = session.currentExecutingCommand?.isExecuting == true ||
                     session.initState != SessionInitState.READY
             val isFallbackPrompt = hasExecutingCommand && (
-                    trimmed.endsWith("$") ||
-                    trimmed.endsWith("#") ||
-                    trimmed.endsWith("$ ") ||
-                    trimmed.endsWith("# ") ||
-                    Regex(".*@[a-zA-Z0-9.\\-]+\\s?:\\s?~?/?.*[#$]\\s*$").matches(trimmed) ||
-                    Regex("root@[a-zA-Z0-9.\\-]+:\\s?~?/?.*#\\s*$").matches(trimmed)
+                    USER_HOST_PROMPT_REGEX.matches(trimmed) ||
+                    ROOT_HOST_PROMPT_REGEX.matches(trimmed) ||
+                    (allowBareShape && BARE_PROMPT_REGEX.matches(trimmed))
                     )
 
             if (isFallbackPrompt) {
