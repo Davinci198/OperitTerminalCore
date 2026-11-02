@@ -370,6 +370,7 @@ class SettingsViewModel(
     fun saveSSHConfig(config: SSHConfig) {
         viewModelScope.launch {
             sshConfigManager.saveConfig(config)
+            terminalManagerRef.invalidateTerminalProvider()
             loadSSHConfigs()
         }
     }
@@ -379,6 +380,7 @@ class SettingsViewModel(
             sshConfigManager.deleteConfig()
             // 删除配置时也禁用 SSH
             sshConfigManager.setEnabled(false)
+            terminalManagerRef.invalidateTerminalProvider()
             loadSSHConfigs()
             loadSSHEnabled()
         }

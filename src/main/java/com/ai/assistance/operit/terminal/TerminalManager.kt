@@ -547,6 +547,31 @@ class TerminalManager private constructor(
         return terminalProvider!!
     }
 
+    /**
+     * Invalidate the cached terminal provider so the next session picks up the
+     * current SSH configuration (enabled/disabled, new host, new credentials).
+     *
+     * The provider is a singleton cache, but the SSH config is user-editable at
+     * runtime: without this hook, switching SSH on/off in Settings kept serving
+     * new sessions from the stale provider until the app was restarted.
+     *
+     * Active sessions keep running on the old provider; only new sessions
+     * (and hidden execs) reconnect with the fresh configuration.
+     */
+    fun invalidateTerminalProvider() {
+        val old = terminalProvider
+        terminalProvider = null
+        if (old != null) {
+            coroutineScope.launch {
+                try {
+                    old.disconnect()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error disconnecting stale terminal provider", e)
+                }
+            }
+        }
+    }
+
     suspend fun initializeEnvironment(): Boolean {
         if (isEnvInitialized) {
             return withContext(Dispatchers.IO) {
