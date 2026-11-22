@@ -24,7 +24,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -877,37 +880,71 @@ fun SettingsScreen(
 
     // 字体大小设置对话框
     if (showFontSizeDialog) {
-        var fontSizeInput by remember { mutableStateOf(fontSize.toInt().toString()) }
+        // Dimensiunea se ține în sp. Stepper-ul schimbă cu 1sp, iar butonul de
+        // potrivire calculează sp-ul la care încap FIT_COLUMNS coloane pe ecran.
+        var fontSizeInput by remember { mutableStateOf(fontSize) }
+        val density = LocalDensity.current
+        val screenWidthDp = LocalConfiguration.current.screenWidthDp
+        val screenWidthPx = with(density) { screenWidthDp.dp.toPx() }
         AlertDialog(
             onDismissRequest = { showFontSizeDialog = false },
             title = { 
                 Text(context.getString(com.ai.assistance.operit.terminal.R.string.font_size_dialog_title), color = SettingsTheme.onSurfaceColor, fontWeight = FontWeight.Bold) 
             },
             text = { 
-                OutlinedTextField(
-                    value = fontSizeInput,
-                    onValueChange = { fontSizeInput = it },
-                    label = { Text(context.getString(com.ai.assistance.operit.terminal.R.string.font_size_label), color = SettingsTheme.onSurfaceVariant) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = SettingsTheme.onSurfaceColor,
-                        unfocusedTextColor = SettingsTheme.onSurfaceColor,
-                        focusedBorderColor = SettingsTheme.primaryColor,
-                        unfocusedBorderColor = SettingsTheme.onSurfaceVariant
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        OutlinedButton(
+                            onClick = { fontSizeInput = (fontSizeInput - 1f).coerceAtLeast(8f) },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = SettingsTheme.primaryColor),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, SettingsTheme.primaryColor)
+                        ) { Text("−", fontSize = 20.sp) }
+                        Text(
+                            text = "${fontSizeInput.toInt()} sp",
+                            color = SettingsTheme.onSurfaceColor,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        OutlinedButton(
+                            onClick = { fontSizeInput = (fontSizeInput + 1f).coerceAtMost(32f) },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = SettingsTheme.primaryColor),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, SettingsTheme.primaryColor)
+                        ) { Text("+", fontSize = 20.sp) }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    // Mostră vie, în fontul terminalului: arată cum va arăta textul.
+                    Text(
+                        text = "$ cat README\n0123456789 toate procesele",
+                        color = SettingsTheme.onSurfaceColor,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = fontSizeInput.sp,
+                        maxLines = 3
                     )
-                )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            fontSizeInput = fontConfigManager.fitToWidthSp(screenWidthPx)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SettingsTheme.primaryColor),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, SettingsTheme.primaryColor)
+                    ) {
+                        Text("Potrivește ${TerminalFontConfigManager.FIT_COLUMNS} coloane")
+                    }
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        try {
-                            val size = fontSizeInput.toFloat().coerceIn(12f, 100f)
-                            fontConfigManager.setFontSize(size)
-                            fontSize = size
-                            showFontSizeDialog = false
-                        } catch (e: Exception) {
-                            // 忽略无效输入
-                        }
+                        val size = fontSizeInput.coerceIn(8f, 32f)
+                        fontConfigManager.setFontSize(size)
+                        fontSize = size
+                        showFontSizeDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SettingsTheme.primaryColor)
                 ) {

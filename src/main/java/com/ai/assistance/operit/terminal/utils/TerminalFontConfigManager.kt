@@ -20,11 +20,21 @@ class TerminalFontConfigManager private constructor(context: Context) {
     
     companion object {
         private const val KEY_FONT_SIZE = "font_size"
+        private const val KEY_FONT_SIZE_UNIT = "font_size_unit"
         private const val KEY_FONT_PATH = "font_path"
         private const val KEY_FONT_NAME = "font_name"
         private const val KEY_TARGET_FPS = "target_fps"
-        
-        private const val DEFAULT_FONT_SIZE = 42f
+
+        // Dimensiunea se ține în sp, ca să respecte scara de font a sistemului.
+        // Valoarea veche (px, implicit 42) folosea aceeași cheie, deci o migrăm o dată.
+        private const val UNIT_SP = "sp"
+        private const val DEFAULT_FONT_SIZE_SP = 15f
+        private const val MIN_FONT_SIZE_SP = 8f
+        private const val MAX_FONT_SIZE_SP = 32f
+        private const val LEGACY_DEFAULT_FONT_SIZE_PX = 42f
+
+        /** Coloanele care trebuie să încapă pe lățime când se apasă „potrivește”. */
+        const val FIT_COLUMNS = 80
         private const val DEFAULT_TARGET_FPS = 60
         private const val MIN_TARGET_FPS = 15
         private const val MAX_TARGET_FPS = 120
@@ -46,7 +56,7 @@ class TerminalFontConfigManager private constructor(context: Context) {
      */
     fun loadRenderConfig(): RenderConfig {
         return RenderConfig(
-            fontSize = getFontSize(),
+            fontSize = getFontSizePx(),
             typeface = loadTypeface(),
             targetFps = getTargetFps()
             // nerdFontPath 和其他参数可以使用 RenderConfig 的默认值
@@ -92,18 +102,62 @@ class TerminalFontConfigManager private constructor(context: Context) {
         }
     }
 
+    /** Cât de mare e un sp în pixeli, ținând cont și de scara de font a sistemului. */
+    private val spScale: Float
+        get() =
+            appContext.resources.displayMetrics.density *
+                appContext.resources.configuration.fontScale
+
     /**
-     * 获取字体大小
+     * 获取字体大小（sp）
+     *
+     * Valorile scrise de versiunile anterioare erau pixeli, deci la prima citire le
+     * convertim în sp și marcăm unitatea; altfel un 42 vechi ar deveni 42sp (uriaș).
      */
     fun getFontSize(): Float {
-        return prefs.getFloat(KEY_FONT_SIZE, DEFAULT_FONT_SIZE)
+        val stored = prefs.getFloat(KEY_FONT_SIZE, DEFAULT_FONT_SIZE_SP)
+        if (prefs.getString(KEY_FONT_SIZE_UNIT, null) == UNIT_SP) {
+            return stored.coerceIn(MIN_FONT_SIZE_SP, MAX_FONT_SIZE_SP)
+        }
+        val legacyPx = if (stored > 0f) stored else LEGACY_DEFAULT_FONT_SIZE_PX
+        val migrated = (legacyPx / spScale).coerceIn(MIN_FONT_SIZE_SP, MAX_FONT_SIZE_SP)
+        prefs
+            .edit()
+            .putFloat(KEY_FONT_SIZE, migrated)
+            .putString(KEY_FONT_SIZE_UNIT, UNIT_SP)
+            .apply()
+        return migrated
     }
-    
+
     /**
-     * 设置字体大小
+     * 设置字体大小（sp）
      */
-    fun setFontSize(size: Float) {
-        prefs.edit().putFloat(KEY_FONT_SIZE, size).apply()
+    fun setFontSize(sizeSp: Float) {
+        prefs
+            .edit()
+            .putFloat(KEY_FONT_SIZE, sizeSp.coerceIn(MIN_FONT_SIZE_SP, MAX_FONT_SIZE_SP))
+            .putString(KEY_FONT_SIZE_UNIT, UNIT_SP)
+            .apply()
+    }
+
+    /** Dimensiunea în pixeli, adică ce primește motorul de randare. */
+    fun getFontSizePx(): Float = getFontSize() * spScale
+
+    /**
+     * Împarte lățimea dată în [FIT_COLUMNS] coloane egale și întoarce mărimea în sp
+     * care ar face textul să încapă exact. Se bazează pe lățimea reală a glifei „M”
+     * din fontul activ, deci funcționează și cu un font Nerd instalat de utilizator.
+     */
+    fun fitToWidthSp(widthPx: Float, columns: Int = FIT_COLUMNS): Float {
+        if (widthPx <= 0f || columns <= 0) return getFontSize()
+        val paint = android.graphics.Paint().apply {
+            typeface = loadTypeface()
+            textSize = 100f
+        }
+        val ratio = paint.measureText("M") / 100f
+        if (ratio <= 0f) return getFontSize()
+        val pxPerCell = widthPx / columns
+        return (pxPerCell / ratio / spScale).coerceIn(MIN_FONT_SIZE_SP, MAX_FONT_SIZE_SP)
     }
     
     /**
@@ -159,6 +213,7 @@ class TerminalFontConfigManager private constructor(context: Context) {
     fun resetToDefault() {
         prefs.edit()
             .remove(KEY_FONT_SIZE)
+            .remove(KEY_FONT_SIZE_UNIT)
             .remove(KEY_FONT_PATH)
             .remove(KEY_FONT_NAME)
             .remove(KEY_TARGET_FPS)
