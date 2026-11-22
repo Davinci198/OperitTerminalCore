@@ -232,6 +232,12 @@ fun TerminalHome(
     }
 
     fun sendDirectInput(input: String) {
+        // Mouse reports and other raw escape sequences must reach the program untouched:
+        // running them through the Ctrl/Alt modifier mapping would corrupt the payload.
+        if (input.startsWith("\u001b")) {
+            env.onSendInput(input, false)
+            return
+        }
         val output = if (ctrlActive || altActive) applyModifiers(input) else input
         env.onSendInput(output, false)
         if (ctrlActive || altActive) {

@@ -128,6 +128,8 @@ class CanvasTerminalView @JvmOverloads constructor(
     private var touchDownY: Float = 0f
     private var hasMovedBeyondTouchSlop: Boolean = false
     private var hadMultiTouch: Boolean = false
+    private var lastTouchX: Float = 0f
+    private var lastTouchY: Float = 0f
     private var imeAnimationOffsetPx: Int = 0
     private var committedImeBottomInsetPx: Int = 0
     
@@ -674,6 +676,65 @@ class CanvasTerminalView @JvmOverloads constructor(
         textMetrics.setNerdTypeface(nerdTypeface)
     }
     
+    // ---- 鼠标上报 -------------------------------------------------------------------
+    //
+    // 全屏 TUI（opencode、free-pi 等）通过 DECSET 1000/1002/1003 打开鼠标上报，并通过
+    // DECSET 1006 请求 SGR 编码。启用后触摸必须变成真实的按下/抬起/滚轮事件；否则程序
+    // 收不到任何输入，用户看到的只是“点哪儿都没反应”。
+
+    private fun isMouseReportingActive(): Boolean = emulator?.isMouseTrackingEnabled() == true
+
+    /** 可见视口内的单元格坐标，1-based（与鼠标上报协议一致）。 */
+    private fun screenCellAt(x: Float, y: Float): Pair<Int, Int> {
+        val charW = textMetrics.charWidth.coerceAtLeast(1f)
+        val charH = textMetrics.charHeight.coerceAtLeast(1f)
+        val localY = (y + getTerminalVisualOffsetY() - getTerminalContentTop()).coerceAtLeast(0f)
+        val rows = (getTerminalViewportHeight() / charH).toInt().coerceAtLeast(1)
+        val row = (localY / charH).toInt().coerceIn(0, rows - 1) + 1
+        val col = (x / charW).toInt().coerceAtLeast(0) + 1
+        return Pair(col, row)
+    }
+
+    private fun sendMouseReport(button: Int, col: Int, row: Int, press: Boolean) {
+        if (!isMouseReportingActive()) return
+        val sgr = emulator?.usesSgrMouseEncoding() == true
+        val payload = if (sgr) {
+            val terminator = if (press) "M" else "m"
+            "\u001b[<$button;$col;$row$terminator"
+        } else {
+            // 旧 X10 编码：ESC [ M <b> <x> <y>，每个值偏移 32；释放用按键 3 表示。
+            val b = ((if (press) button else 3) + 32).coerceIn(32, 255).toChar()
+            val cx = (col + 32).coerceIn(32, 255).toChar()
+            val cy = (row + 32).coerceIn(32, 255).toChar()
+            "\u001b[M$b$cx$cy"
+        }
+        inputCallback?.invoke(payload)
+    }
+
+    /** 把一个点击变成按下+抬起。返回 true 表示鼠标事件已发出（此时不应弹出键盘）。 */
+    private fun sendMouseClick(x: Float, y: Float, button: Int): Boolean {
+        if (!isMouseReportingActive()) return false
+        val (col, row) = screenCellAt(x, y)
+        sendMouseReport(button, col, row, true)
+        sendMouseReport(button, col, row, false)
+        return true
+    }
+
+    /**
+     * 程序接管鼠标后，滚动应作为滚轮事件发给程序，而不是滚动本地回滚缓冲。
+     * 返回 true 表示事件已被吞掉。
+     */
+    private fun dispatchWheelScroll(distanceY: Float): Boolean {
+        if (!isMouseReportingActive()) return false
+        val charH = textMetrics.charHeight.coerceAtLeast(1f)
+        val lines = (distanceY / charH).toInt()
+        if (lines == 0) return true
+        val (col, row) = screenCellAt(lastTouchX, lastTouchY)
+        val button = if (lines > 0) 65 else 64 // 65 = 滚轮向下，64 = 滚轮向上
+        repeat(abs(lines).coerceAtMost(10)) { sendMouseReport(button, col, row, true) }
+        return true
+    }
+
     private fun initGestureHandler() {
         gestureHandler = GestureHandler(
             context = context,
@@ -682,6 +743,9 @@ class CanvasTerminalView @JvmOverloads constructor(
                 requestRender()
             },
             onScroll = { _, distanceY ->
+                if (dispatchWheelScroll(distanceY)) {
+                    return@GestureHandler
+                }
                 if (!selectionManager.hasSelection()) {
                     // 手动滚动时停止惯性滚动
                     if (!scroller.isFinished) {
@@ -745,7 +809,10 @@ class CanvasTerminalView @JvmOverloads constructor(
                 }
             },
             onLongPress = { x, y ->
-                startTextSelection(x, y)
+                // 程序接管鼠标时长按等价于右键
+                if (!sendMouseClick(x, y, 2)) {
+                    startTextSelection(x, y)
+                }
             }
         )
     }
@@ -1053,6 +1120,9 @@ class CanvasTerminalView @JvmOverloads constructor(
                 requestRender()
             },
             onScroll = { _, distanceY ->
+                if (dispatchWheelScroll(distanceY)) {
+                    return@GestureHandler
+                }
                 if (!selectionManager.hasSelection()) {
                     // 手动滚动时停止惯性滚动
                     if (!scroller.isFinished) {
@@ -1109,7 +1179,10 @@ class CanvasTerminalView @JvmOverloads constructor(
                 // 双击选择单词（可选实现）
             },
             onLongPress = { x, y ->
-                startTextSelection(x, y)
+                // 程序接管鼠标时长按等价于右键
+                if (!sendMouseClick(x, y, 2)) {
+                    startTextSelection(x, y)
+                }
             }
         )
     }
@@ -2266,6 +2339,8 @@ class CanvasTerminalView @JvmOverloads constructor(
         if (action == MotionEvent.ACTION_DOWN) {
             touchDownX = event.x
             touchDownY = event.y
+            lastTouchX = event.x
+            lastTouchY = event.y
             hasMovedBeyondTouchSlop = false
             hadMultiTouch = false
 
@@ -2304,6 +2379,8 @@ class CanvasTerminalView @JvmOverloads constructor(
         
         // 处理选择移动
         if (action == MotionEvent.ACTION_MOVE) {
+            lastTouchX = event.x
+            lastTouchY = event.y
             if (!hasMovedBeyondTouchSlop) {
                 val dx = abs(event.x - touchDownX)
                 val dy = abs(event.y - touchDownY)
@@ -2339,7 +2416,10 @@ class CanvasTerminalView @JvmOverloads constructor(
                         !gestureHandler.isScaling &&
                         !hadMultiTouch
                 if (isClickGesture) {
-                    if (isFullscreenMode) {
+                    // 程序接管鼠标时，点按是一次真实的左键点击，而不是请求键盘
+                    if (sendMouseClick(event.x, event.y, 0)) {
+                        handled = true
+                    } else if (isFullscreenMode) {
                         showSoftKeyboard()
                     } else {
                         onRequestShowKeyboard?.invoke()
