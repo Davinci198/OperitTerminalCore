@@ -87,6 +87,19 @@ class AnsiTerminalEmulator(
     
     // 终端模式标志
     private val terminalModes = mutableMapOf<Int, Boolean>()
+
+    /**
+     * 程序是否启用了鼠标上报（DECSET 1000/1002/1003）。
+     * 全屏 TUI（opencode、lazygit 等）依赖它把触摸/点击变成真实的鼠标事件。
+     */
+    fun isMouseTrackingEnabled(): Boolean =
+        terminalModes[1000] == true || terminalModes[1002] == true || terminalModes[1003] == true
+
+    /** SGR 扩展鼠标编码（DECSET 1006）；否则回退到旧的 X10 编码。 */
+    fun usesSgrMouseEncoding(): Boolean = terminalModes[1006] == true
+
+    /** 程序是否占据备用屏幕（全屏 TUI 正在运行）。 */
+    fun isAlternateScreenActive(): Boolean = isAltScreenActive
     private var cursorVisible = true
     private var autoWrapMode = true
     private var originMode = false

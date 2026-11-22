@@ -5,15 +5,20 @@ import android.graphics.Typeface
 import android.os.Build
 import android.view.inputmethod.InputMethodManager
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -49,7 +54,6 @@ import com.ai.assistance.operit.terminal.data.CommandHistoryItem
 import com.ai.assistance.operit.terminal.view.canvas.CanvasTerminalOutput
 import com.ai.assistance.operit.terminal.view.canvas.CanvasTerminalScreen
 import com.ai.assistance.operit.terminal.view.canvas.RenderConfig
-import com.ai.assistance.operit.terminal.view.canvas.TerminalTabRenderItem
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.ai.assistance.operit.terminal.TerminalEnv
@@ -232,6 +236,12 @@ fun TerminalHome(
     }
 
     fun sendDirectInput(input: String) {
+        // Mouse reports and other raw escape sequences must reach the program untouched:
+        // running them through the Ctrl/Alt modifier mapping would corrupt the payload.
+        if (input.startsWith("\u001b")) {
+            env.onSendInput(input, false)
+            return
+        }
         val output = if (ctrlActive || altActive) applyModifiers(input) else input
         env.onSendInput(output, false)
         if (ctrlActive || altActive) {
@@ -277,22 +287,16 @@ fun TerminalHome(
     val currentPty = remember(env.currentSessionId, env.sessions) {
         env.sessions.find { it.id == env.currentSessionId }?.pty
     }
-    val tabItems = remember(env.sessions) {
-        val closable = env.sessions.size > 1
-        env.sessions.map { session ->
-            TerminalTabRenderItem(
-                id = session.id,
-                title = session.title,
-                canClose = closable
-            )
-        }
-    }
     val onTabCloseRequest: (String) -> Unit = { sessionId ->
         if (env.sessions.size > 1) {
             sessionToDelete = sessionId
             showDeleteConfirmDialog = true
         }
     }
+
+    // Panoul terminalului foloseste fundalul Mobile Harness, deci si canvas-ul trebuie sa-l foloseasca:
+    // altfel ramane o margine neagra in jurul textului.
+    val panelConfig = remember(fontConfig) { fontConfig.copy(backgroundColor = MH_PANEL_ARGB) }
 
     Column(
         modifier = Modifier
@@ -305,10 +309,22 @@ fun TerminalHome(
                     .fillMaxSize()
             ) {
                 // 终端输出区域
+                if (useLocalImeHandling) {
+                    MhTerminalHeader(
+                        onRunCommand = { env.onSendInput(it, true) },
+                        sessionIds = env.sessions.map { it.id },
+                        currentSessionId = env.currentSessionId,
+                        onSelectSession = env::onSwitchSession,
+                        onCloseSession = onTabCloseRequest,
+                        onNewSession = env::onNewSession,
+                        fontSize = fontSize * 0.8f,
+                        padding = padding
+                    )
+                }
                 CanvasTerminalScreen(
                     emulator = env.terminalEmulator,
                     modifier = Modifier.weight(1f),
-                    config = fontConfig,
+                    config = panelConfig,
                     pty = currentPty,
                     imeAnimationOffsetPx = fullscreenImeBottomPx,
                     committedImeBottomInsetPx = committedFullscreenImeBottomPx,
@@ -316,7 +332,7 @@ fun TerminalHome(
                     sessionId = env.currentSessionId,
                     onScrollOffsetChanged = { id, offset -> env.saveScrollOffset(id, offset) },
                     getScrollOffset = { id -> env.getScrollOffset(id) },
-                    tabs = tabItems,
+                    tabs = emptyList(),
                     currentTabId = env.currentSessionId,
                     onTabClick = env::onSwitchSession,
                     onTabClose = onTabCloseRequest,
@@ -351,10 +367,22 @@ fun TerminalHome(
                 // Canvas输出区域（占满剩余空间）
                 if (isDirectInputMode) {
                     // 直接输入模式：使用与全屏相同的 CanvasTerminalScreen，点击画布时由 CanvasTerminalView 自己弹出输入法
+                    if (useLocalImeHandling) {
+                        MhTerminalHeader(
+                            onRunCommand = { env.onSendInput(it, true) },
+                            sessionIds = env.sessions.map { it.id },
+                            currentSessionId = env.currentSessionId,
+                            onSelectSession = env::onSwitchSession,
+                            onCloseSession = onTabCloseRequest,
+                            onNewSession = env::onNewSession,
+                            fontSize = fontSize * 0.8f,
+                            padding = padding
+                        )
+                    }
                     CanvasTerminalScreen(
                         emulator = env.terminalEmulator,
                         modifier = Modifier.weight(1f),
-                        config = fontConfig,
+                        config = panelConfig,
                         pty = currentPty,
                         imeAnimationOffsetPx = standardImeBottomPx,
                         committedImeBottomInsetPx = committedStandardImeBottomPx,
@@ -362,7 +390,7 @@ fun TerminalHome(
                         sessionId = env.currentSessionId,
                         onScrollOffsetChanged = { id, offset -> env.saveScrollOffset(id, offset) },
                         getScrollOffset = { id -> env.getScrollOffset(id) },
-                        tabs = tabItems,
+                        tabs = emptyList(),
                         currentTabId = env.currentSessionId,
                         onTabClick = env::onSwitchSession,
                         onTabClose = onTabCloseRequest,
@@ -373,7 +401,7 @@ fun TerminalHome(
                     CanvasTerminalOutput(
                         emulator = env.terminalEmulator,
                         modifier = Modifier.weight(1f),
-                        config = fontConfig,
+                        config = panelConfig,
                         pty = currentPty,
                         imeAnimationOffsetPx = standardImeBottomPx,
                         committedImeBottomInsetPx = committedStandardImeBottomPx,
@@ -384,7 +412,7 @@ fun TerminalHome(
                         sessionId = env.currentSessionId,
                         onScrollOffsetChanged = { id, offset -> env.saveScrollOffset(id, offset) },
                         getScrollOffset = { id -> env.getScrollOffset(id) },
-                        tabs = tabItems,
+                        tabs = emptyList(),
                         currentTabId = env.currentSessionId,
                         onTabClick = env::onSwitchSession,
                         onTabClose = onTabCloseRequest,
@@ -422,12 +450,12 @@ fun TerminalHome(
                         ) {
                             Surface(
                                 modifier = Modifier.padding(end = padding * 0.5f),
-                                color = Color(0xFF006400), // DarkGreen
-                                shape = RoundedCornerShape(4.dp)
+                                color = MH_KEY_BG,
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
                                     text = getTruncatedPrompt(env.currentDirectory.ifEmpty { "$ " }),
-                                    color = Color.White,
+                                    color = MH_KEY_FG,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = fontSize,
                                     modifier = Modifier.padding(horizontal = padding * 0.5f, vertical = padding * 0.1f)
@@ -456,12 +484,12 @@ fun TerminalHome(
                                 modifier = Modifier
                                     .padding(start = padding * 0.5f)
                                     .clickable { showVirtualKeyboard = !showVirtualKeyboard },
-                                color = if (showVirtualKeyboard) Color(0xFF4A4A4A) else Color(0xFF3A3A3A),
-                                shape = RoundedCornerShape(4.dp)
+                                color = if (showVirtualKeyboard) MH_KEY_BG_ACTIVE else MH_KEY_BG,
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
                                     text = "⌨",
-                                    color = Color.White,
+                                    color = MH_KEY_FG,
                                     fontFamily = FontFamily.Default,
                                     fontSize = fontSize * 1.2f,
                                     modifier = Modifier.padding(horizontal = padding * 0.75f, vertical = padding * 0.4f)
@@ -471,12 +499,12 @@ fun TerminalHome(
                                 modifier = Modifier
                                     .padding(start = padding * 0.5f)
                                     .clickable { toggleDirectInputMode() },
-                                color = if (isDirectInputMode) Color(0xFF4A4A4A) else Color(0xFF3A3A3A),
-                                shape = RoundedCornerShape(4.dp)
+                                color = if (isDirectInputMode) MH_KEY_BG_ACTIVE else MH_KEY_BG,
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
                                     text = "⇄",
-                                    color = Color.White,
+                                    color = MH_KEY_FG,
                                     fontFamily = FontFamily.Default,
                                     fontSize = fontSize * 1.1f,
                                     modifier = Modifier.padding(horizontal = padding * 0.75f, vertical = padding * 0.4f)
@@ -591,6 +619,147 @@ private fun rememberSettledImeBottomPx(targetBottomPx: Int, settleDelayMs: Long 
     return settledBottomPx
 }
 
+// Paleta "Mobile Harness": panoul terminalului, chips-urile de comenzi rapide și rândurile de taste
+// suplimentare folosesc aceleași tonuri ca ecranul de terminal din Mobile Harness.
+private val MH_PANEL = Color(0xFF2B2930)
+
+/** Acelasi fundal, in formatul ARGB cerut de RenderConfig. */
+private val MH_PANEL_ARGB = 0xFF2B2930.toInt()
+private val MH_KEY_BG = Color(0xFF1B1B1B)
+private val MH_KEY_BG_ACTIVE = Color(0xFF3A3A3A)
+private val MH_KEY_FG = Color(0xFFE6E6E6)
+private val MH_CHIP_FG = Color(0xFF9E9E9E)
+private val MH_ACCENT = Color(0xFF7C5CFC)
+
+/** Comenzile rapide afișate deasupra terminalului. */
+private val MH_QUICK_COMMANDS = listOf("uname -a", "ls -la", "pwd", "clear")
+
+@Composable
+private fun MhTerminalHeader(
+    onRunCommand: (String) -> Unit,
+    sessionIds: List<String>,
+    currentSessionId: String?,
+    onSelectSession: (String) -> Unit,
+    onCloseSession: (String) -> Unit,
+    onNewSession: () -> Unit,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    padding: androidx.compose.ui.unit.Dp
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(MH_PANEL)
+    ) {
+        MhQuickCommandBar(onRunCommand = onRunCommand, fontSize = fontSize, padding = padding)
+        MhSessionChips(
+            sessionIds = sessionIds,
+            currentSessionId = currentSessionId,
+            onSelectSession = onSelectSession,
+            onCloseSession = onCloseSession,
+            onNewSession = onNewSession,
+            fontSize = fontSize,
+            padding = padding
+        )
+    }
+}
+
+/** Rândul de comenzi rapide, derulabil orizontal. */
+@Composable
+private fun MhQuickCommandBar(
+    onRunCommand: (String) -> Unit,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    padding: androidx.compose.ui.unit.Dp
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = padding, vertical = padding * 0.35f),
+        horizontalArrangement = Arrangement.spacedBy(padding * 0.5f),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MH_QUICK_COMMANDS.forEach { command ->
+            Surface(
+                modifier = Modifier.clickable { onRunCommand(command) },
+                color = Color.Transparent,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, MH_ACCENT.copy(alpha = 0.65f))
+            ) {
+                Text(
+                    text = command,
+                    color = MH_ACCENT,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = fontSize,
+                    maxLines = 1,
+                    modifier =
+                        Modifier.padding(horizontal = padding * 0.8f, vertical = padding * 0.35f)
+                )
+            }
+        }
+    }
+}
+
+/** Chips-urile de sesiune, ca în Mobile Harness: număr = sesiune, apăsare lungă închide. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MhSessionChips(
+    sessionIds: List<String>,
+    currentSessionId: String?,
+    onSelectSession: (String) -> Unit,
+    onCloseSession: (String) -> Unit,
+    onNewSession: () -> Unit,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    padding: androidx.compose.ui.unit.Dp
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = padding, vertical = padding * 0.15f),
+        horizontalArrangement = Arrangement.spacedBy(padding * 0.5f),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        sessionIds.forEachIndexed { index, id ->
+            val active = id == currentSessionId
+            Surface(
+                modifier =
+                    Modifier.combinedClickable(
+                        onClick = { onSelectSession(id) },
+                        onLongClick = { onCloseSession(id) }
+                    ),
+                color = if (active) MH_KEY_BG_ACTIVE else MH_KEY_BG,
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = "${index + 1}",
+                    color = if (active) Color.White else MH_CHIP_FG,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = fontSize,
+                    modifier =
+                        Modifier.padding(horizontal = padding * 0.9f, vertical = padding * 0.25f)
+                )
+            }
+        }
+
+        Surface(
+            modifier = Modifier.combinedClickable(onClick = onNewSession, onLongClick = {}),
+            color = MH_KEY_BG,
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(
+                text = "+",
+                color = MH_CHIP_FG,
+                fontFamily = FontFamily.Monospace,
+                fontSize = fontSize,
+                modifier = Modifier.padding(horizontal = padding * 0.9f, vertical = padding * 0.25f)
+            )
+        }
+    }
+}
+
 @Composable
 private fun TerminalToolbar(
     onInterrupt: () -> Unit,
@@ -607,7 +776,7 @@ private fun TerminalToolbar(
     val context = LocalContext.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF1A1A1A),
+        color = MH_PANEL,
         shadowElevation = 2.dp
     ) {
         Row(
@@ -621,7 +790,7 @@ private fun TerminalToolbar(
                 // Ctrl+C 中断按钮
                 Surface(
                     modifier = Modifier.clickable { onInterrupt() },
-                    color = Color(0xFF4A4A4A),
+                    color = MH_KEY_BG_ACTIVE,
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Row(
@@ -631,7 +800,7 @@ private fun TerminalToolbar(
                     ) {
                         Text(
                             text = "Ctrl+C",
-                            color = Color.White,
+                            color = MH_KEY_FG,
                             fontFamily = FontFamily.Monospace,
                             fontSize = fontSize,
                             fontWeight = FontWeight.Medium
@@ -650,7 +819,7 @@ private fun TerminalToolbar(
                     modifier = Modifier
                         .width(1.dp)
                         .height(padding * 1.5f)
-                        .background(Color(0xFF3A3A3A))
+                        .background(MH_KEY_BG_ACTIVE)
                 )
             }
 
@@ -659,7 +828,7 @@ private fun TerminalToolbar(
             // 环境配置按钮
             Surface(
                 modifier = Modifier.clickable { onNavigateToSetup() },
-                color = Color(0xFF4A4A4A),
+                color = MH_KEY_BG_ACTIVE,
                 shape = RoundedCornerShape(6.dp)
             ) {
                 Row(
@@ -668,7 +837,7 @@ private fun TerminalToolbar(
                 ) {
                     Text(
                         text = context.getString(com.ai.assistance.operit.terminal.R.string.environment_setup),
-                        color = Color.White,
+                        color = MH_KEY_FG,
                         fontFamily = FontFamily.Default,
                         fontSize = fontSize,
                         fontWeight = FontWeight.Medium
@@ -679,12 +848,12 @@ private fun TerminalToolbar(
             if (isDirectInputMode) {
                 Surface(
                     modifier = Modifier.clickable { onToggleVirtualKeyboard() },
-                    color = if (showVirtualKeyboard) Color(0xFF4A4A4A) else Color(0xFF3A3A3A),
+                    color = if (showVirtualKeyboard) MH_KEY_BG_ACTIVE else MH_KEY_BG,
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = "⌨",
-                        color = Color.White,
+                        color = MH_KEY_FG,
                         fontFamily = FontFamily.Default,
                         fontSize = fontSize * 1.15f,
                         modifier = Modifier.padding(horizontal = padding * 0.75f, vertical = padding * 0.35f)
@@ -692,12 +861,12 @@ private fun TerminalToolbar(
                 }
                 Surface(
                     modifier = Modifier.clickable { onToggleInputMode() },
-                    color = Color(0xFF4A4A4A),
+                    color = MH_KEY_BG_ACTIVE,
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = "⇄",
-                        color = Color.White,
+                        color = MH_KEY_FG,
                         fontFamily = FontFamily.Default,
                         fontSize = fontSize * 1.05f,
                         modifier = Modifier.padding(horizontal = padding * 0.75f, vertical = padding * 0.4f)
@@ -732,7 +901,7 @@ private fun VirtualKeyboard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF1A1A1A),
+        color = MH_PANEL,
         shadowElevation = 4.dp
     ) {
         Column(
@@ -786,12 +955,12 @@ private fun KeyButton(
     isActive: Boolean = false,
     onClickOverride: (() -> Unit)? = null
 ) {
-    val backgroundColor = if (isActive) Color(0xFF2563EB) else Color(0xFF3A3A3A)
+    val backgroundColor = if (isActive) MH_KEY_BG_ACTIVE else MH_KEY_BG
     Surface(
         modifier = modifier
             .clickable { onClickOverride?.invoke() ?: onKeyPress(key) },
         color = backgroundColor,
-        shape = RoundedCornerShape(4.dp)
+        shape = RoundedCornerShape(5.dp)
     ) {
         Box(
             modifier = Modifier
@@ -800,7 +969,7 @@ private fun KeyButton(
         ) {
             Text(
                 text = label,
-                color = Color.White,
+                color = if (isActive) Color.White else MH_KEY_FG,
                 fontFamily = FontFamily.Monospace,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Medium,
