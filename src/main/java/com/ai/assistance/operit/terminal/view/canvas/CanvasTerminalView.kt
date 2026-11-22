@@ -2639,10 +2639,26 @@ class CanvasTerminalView @JvmOverloads constructor(
     
     /**
      * 显示软键盘
+     *
+     * `showSoftInput` cere ca view-ul să aibă deja focus și o conexiune de input; dacă
+     * utilizatorul a închis tastatura cu back, `SHOW_IMPLICIT` e ignorat în tura următoare.
+     * De aceea cerem focusul întâi și mai încercăm o dată după ce fereastra s-a așezat.
      */
     private fun showSoftKeyboard() {
+        if (isFocusableInTouchMode) requestFocus()
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
         imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+        if (imm?.isAcceptingText != true) {
+            postDelayed(
+                {
+                    if (imm?.isAcceptingText != true) {
+                        requestFocus()
+                        imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+                    }
+                },
+                150L
+            )
+        }
     }
     
     /**

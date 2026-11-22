@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.terminal.ui
 
 import android.content.Context
+import android.util.Log
 import android.graphics.Typeface
 import android.os.Build
 import android.view.inputmethod.InputMethodManager
@@ -142,10 +143,25 @@ fun TerminalHome(
     LaunchedEffect(pendingShowIme) {
         if (pendingShowIme) {
             pendingShowIme = false
-            // 模仿全屏模式，在焦点切换后稍微延迟再请求输入法
-            delay(100)
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            imm?.showSoftInput(rootView, InputMethodManager.SHOW_IMPLICIT)
+            val imm =
+                context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            // Cererea de focus și crearea InputConnection-ului se fac în cadre diferite, iar
+            // `SHOW_IMPLICIT` e ignorat după ce utilizatorul a închis IME-ul cu back — de aici
+            // „uneori nu apare tastatura”. De aceea insistăm: controller-ul Compose (singurul
+            // care vorbește cu sesiunea de text a câmpului), apoi IMM, cu verificare reală.
+            repeat(3) { attempt ->
+                delay(if (attempt == 0) 100L else 150L)
+                keyboardController?.show()
+                if (imm?.isAcceptingText != true) {
+                    imm?.showSoftInput(rootView, InputMethodManager.SHOW_IMPLICIT)
+                }
+                Log.d(
+                    "TerminalIme",
+                    "request IME attempt=${attempt + 1} accepting=${imm?.isAcceptingText}"
+                )
+                if (imm?.isAcceptingText == true) return@LaunchedEffect
+                inputFocusRequester.requestFocus()
+            }
         }
     }
 
