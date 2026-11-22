@@ -626,7 +626,7 @@ private val MH_CHIP_FG = Color(0xFF9E9E9E)
 private val MH_ACCENT = Color(0xFF7C5CFC)
 
 /** Comenzile rapide afișate deasupra terminalului. */
-private val MH_QUICK_COMMANDS = listOf("uname -a", "ls -la", "pwd", "mtop")
+private val MH_QUICK_COMMANDS = listOf("uname -a", "ls -la", "pwd", "mtop --adb")
 
 @Composable
 private fun MhTerminalHeader(

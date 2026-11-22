@@ -123,7 +123,7 @@ class TerminalManager private constructor(
         private const val TERMINAL_ENTER = "\r"
 
         /** Bump cand se schimba `assets/mtop.py`, ca sa fie rescris in guest. */
-        private const val MTOP_VERSION = "1"
+        private const val MTOP_VERSION = "2"
     }
 
     init {
