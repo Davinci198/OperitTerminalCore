@@ -155,7 +155,7 @@ fun TerminalHome(
                 if (imm?.isAcceptingText != true) {
                     imm?.showSoftInput(rootView, InputMethodManager.SHOW_IMPLICIT)
                 }
-                Log.d(
+                Log.w(
                     "TerminalIme",
                     "request IME attempt=${attempt + 1} accepting=${imm?.isAcceptingText}"
                 )
