@@ -296,7 +296,7 @@ fun TerminalHome(
 
     // Panoul terminalului foloseste fundalul Mobile Harness, deci si canvas-ul trebuie sa-l foloseasca:
     // altfel ramane o margine neagra in jurul textului.
-    val panelConfig = remember(fontConfig) { fontConfig.copy(backgroundColor = MH_PANEL) }
+    val panelConfig = remember(fontConfig) { fontConfig.copy(backgroundColor = MH_PANEL_ARGB) }
 
     Column(
         modifier = Modifier
@@ -622,6 +622,9 @@ private fun rememberSettledImeBottomPx(targetBottomPx: Int, settleDelayMs: Long 
 // Paleta "Mobile Harness": panoul terminalului, chips-urile de comenzi rapide și rândurile de taste
 // suplimentare folosesc aceleași tonuri ca ecranul de terminal din Mobile Harness.
 private val MH_PANEL = Color(0xFF2B2930)
+
+/** Acelasi fundal, in formatul ARGB cerut de RenderConfig. */
+private val MH_PANEL_ARGB = 0xFF2B2930.toInt()
 private val MH_KEY_BG = Color(0xFF1B1B1B)
 private val MH_KEY_BG_ACTIVE = Color(0xFF3A3A3A)
 private val MH_KEY_FG = Color(0xFFE6E6E6)
