@@ -960,9 +960,12 @@ class CanvasTerminalView @JvmOverloads constructor(
      */
     fun setFullscreenMode(isFullscreen: Boolean) {
         isFullscreenMode = isFullscreen
-        // 非全屏模式下禁用焦点和输入法
-        isFocusable = isFullscreen
-        isFocusableInTouchMode = isFullscreen
+        // Canvas-ul e mereu editorul de text, și în panoul din chat: altfel tap-ul cere
+        // tastatura pentru rădăcina Compose, iar InputMethodManager o ignoră pentru că
+        // view-ul care deține conexiunea de input e chiar acest canvas
+        // („Ignoring showSoftInput() as view=AndroidComposeView is not served”).
+        isFocusable = true
+        isFocusableInTouchMode = true
     }
     
     /**
@@ -2433,10 +2436,14 @@ class CanvasTerminalView @JvmOverloads constructor(
                     // 程序接管鼠标时，点按是一次真实的左键点击，而不是请求键盘
                     if (sendMouseClick(event.x, event.y, 0)) {
                         handled = true
-                    } else if (isFullscreenMode) {
-                        showSoftKeyboard()
                     } else {
-                        onRequestShowKeyboard?.invoke()
+                        // Un singur deținător al IME: canvas-ul, fiindcă el are conexiunea de
+                        // input care scrie în PTY. Cererea către rădăcina Compose e ignorată
+                        // cu „view is not served”, deci nu mai insistăm pe ea.
+                        showSoftKeyboard()
+                        if (!isFullscreenMode && inputCallback == null) {
+                            onRequestShowKeyboard?.invoke()
+                        }
                     }
                 }
             }
@@ -2800,7 +2807,8 @@ class CanvasTerminalView @JvmOverloads constructor(
      * 检查是否可以显示输入法
      */
     override fun onCheckIsTextEditor(): Boolean {
-        return isFullscreenMode
+        // 两个模式都是文本编辑器：面板里输入也要进 PTY（nano, opencode 等全屏程序）
+        return true
     }
     
     /**
