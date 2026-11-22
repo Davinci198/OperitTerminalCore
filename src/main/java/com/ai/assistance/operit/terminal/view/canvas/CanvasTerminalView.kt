@@ -2652,27 +2652,35 @@ class CanvasTerminalView @JvmOverloads constructor(
      * De aceea cerem focusul întâi și mai încercăm o dată după ce fereastra s-a așezat.
      */
     private fun showSoftKeyboard() {
-        if (isFocusableInTouchMode) requestFocus()
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-        // Dacă sesiunea IME e moartă (view-ul a fost detașat o clipă, fereastra și-a pierdut
-        // focusul, sau IME-ul a rămas agățat de un view vechi după un program full-screen
-        // ca htop), `showSoftInput` nu mai are efect. `restartInput` recreatează conexiunea.
-        if (imm?.isActive(this) != true) {
-            imm?.restartInput(this)
+        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager ?: return
+        softKeyboardAttempt(imm)
+        postDelayed(
+            {
+                if (!imm.isAcceptingText) softKeyboardAttempt(imm, renewFocus = true)
+            },
+            140L
+        )
+    }
+
+    /**
+     * O singură încercare de a deschide tastatura.
+     *
+     * Android refuză cererile implicite după ce utilizatorul a închis tastatura cu back,
+     * iar după un program full-screen (htop) sau un zoom sesiunea IME poate rămâne legată de
+     * o conexiune moartă. `renewFocus` forțează un eveniment de focus nou — singurul mod
+     * sigur de a repermite IME-ul — și recreatează conexiunea cu `restartInput`.
+     */
+    private fun softKeyboardAttempt(imm: InputMethodManager, renewFocus: Boolean = false) {
+        if (renewFocus) {
+            clearFocus()
         }
-        imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
-        if (imm?.isAcceptingText != true) {
-            postDelayed(
-                {
-                    if (imm?.isAcceptingText != true) {
-                        requestFocus()
-                        imm?.restartInput(this)
-                        imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
-                    }
-                },
-                150L
-            )
+        if (isFocusableInTouchMode && !hasFocus()) {
+            requestFocus()
         }
+        if (renewFocus || imm.isActive(this) != true) {
+            imm.restartInput(this)
+        }
+        imm.showSoftInput(this, 0)
     }
     
     /**
