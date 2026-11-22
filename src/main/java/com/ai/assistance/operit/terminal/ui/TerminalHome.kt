@@ -298,6 +298,21 @@ fun TerminalHome(
     // altfel ramane o margine neagra in jurul textului.
     val panelConfig = remember(fontConfig) { fontConfig.copy(backgroundColor = MH_PANEL_ARGB) }
 
+    // Antetul se randeaza pe orice varianta de terminal (fullscreen, mod direct, panoul din chat):
+    // inlocuieste tab-urile desenate pe canvas, deci fara el sesiunile nu mai pot fi schimbate.
+    val mhHeader: @Composable () -> Unit = {
+        MhTerminalHeader(
+            onRunCommand = { env.onSendInput(it, true) },
+            sessionIds = env.sessions.map { it.id },
+            currentSessionId = env.currentSessionId,
+            onSelectSession = env::onSwitchSession,
+            onCloseSession = onTabCloseRequest,
+            onNewSession = env::onNewSession,
+            fontSize = fontSize * 0.8f,
+            padding = padding
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -309,18 +324,7 @@ fun TerminalHome(
                     .fillMaxSize()
             ) {
                 // 终端输出区域
-                if (useLocalImeHandling) {
-                    MhTerminalHeader(
-                        onRunCommand = { env.onSendInput(it, true) },
-                        sessionIds = env.sessions.map { it.id },
-                        currentSessionId = env.currentSessionId,
-                        onSelectSession = env::onSwitchSession,
-                        onCloseSession = onTabCloseRequest,
-                        onNewSession = env::onNewSession,
-                        fontSize = fontSize * 0.8f,
-                        padding = padding
-                    )
-                }
+                mhHeader()
                 CanvasTerminalScreen(
                     emulator = env.terminalEmulator,
                     modifier = Modifier.weight(1f),
@@ -367,18 +371,7 @@ fun TerminalHome(
                 // Canvas输出区域（占满剩余空间）
                 if (isDirectInputMode) {
                     // 直接输入模式：使用与全屏相同的 CanvasTerminalScreen，点击画布时由 CanvasTerminalView 自己弹出输入法
-                    if (useLocalImeHandling) {
-                        MhTerminalHeader(
-                            onRunCommand = { env.onSendInput(it, true) },
-                            sessionIds = env.sessions.map { it.id },
-                            currentSessionId = env.currentSessionId,
-                            onSelectSession = env::onSwitchSession,
-                            onCloseSession = onTabCloseRequest,
-                            onNewSession = env::onNewSession,
-                            fontSize = fontSize * 0.8f,
-                            padding = padding
-                        )
-                    }
+                    mhHeader()
                     CanvasTerminalScreen(
                         emulator = env.terminalEmulator,
                         modifier = Modifier.weight(1f),
@@ -398,6 +391,7 @@ fun TerminalHome(
                     )
                 } else {
                     // 嵌入聊天页时，外层已统一处理 IME；独立终端页则继续使用本地 IME 位移来驱动画布 viewport。
+                    mhHeader()
                     CanvasTerminalOutput(
                         emulator = env.terminalEmulator,
                         modifier = Modifier.weight(1f),
