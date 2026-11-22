@@ -121,6 +121,9 @@ class TerminalManager private constructor(
         private const val MAX_HISTORY_ITEMS = 500
         private const val MAX_OUTPUT_LINES_PER_ITEM = 1000
         private const val TERMINAL_ENTER = "\r"
+
+        /** Bump cand se schimba `assets/mtop.py`, ca sa fie rescris in guest. */
+        private const val MTOP_VERSION = "1"
     }
 
     init {
@@ -578,6 +581,8 @@ class TerminalManager private constructor(
                 try {
                     val startScript = generateStartScript()
                     File(filesDir, "common.sh").writeText(startScript.replace("\r\n", "\n").replace("\r", "\n"))
+                    // Reintoarce in guest pe fiecare pornire: prinde si instalarea care a eșuat prima data.
+                    installGuestMtop()
                     true
                 } catch (e: Exception) {
                     Log.e(TAG, "Environment script refresh failed", e)
@@ -605,6 +610,9 @@ class TerminalManager private constructor(
 
                     // 3. Extract assets
                     extractAssets()
+
+                    // 3b. Tool-uri pentru guest (mtop)
+                    installGuestMtop()
 
                     // 4. Generate and write startup script
                     val startScript = generateStartScript()
@@ -757,6 +765,54 @@ class TerminalManager private constructor(
             Files.deleteIfExists(linkFile.toPath())
         }
         Files.createSymbolicLink(linkFile.toPath(), targetPath)
+    }
+
+    /**
+     * Instaleaza `mtop` in guest (assets/mtop.py -> <rootfs>/usr/local/bin/mtop), la fel ca in
+     * Mobile Harness. `mtop` citeste /proc direct, deci merge si cand `htop`, `ps` sau `w` sunt
+     * limitate de SELinux intr-un container PRoot.
+     *
+     * Se apeleaza la fiecare initializare de mediu; markerul face scrierea idempotenta.
+     */
+    private fun installGuestMtop() {
+        val rootfs = File(usrDir, "var/lib/proot-distro/installed-rootfs/ubuntu")
+        if (!rootfs.isDirectory) {
+            Log.d(TAG, "Guest rootfs not installed yet; skipping mtop")
+            return
+        }
+        val target = File(rootfs, "usr/local/bin/mtop")
+        val marker = File(rootfs, ".operit-mtop-version")
+        if (target.isFile && marker.isFile && marker.readText().trim() == MTOP_VERSION) {
+            return
+        }
+        try {
+            // Scriptul sta in usr/local/lib/operit, iar usr/local/bin/mtop e un wrapper subtire:
+            // daca python3 lipseste, utilizatorul primeste un mesaj clar in loc de "no such file".
+            val scriptDir = File(rootfs, "usr/local/lib/operit")
+            scriptDir.mkdirs()
+            context.assets.open("mtop.py").use { input ->
+                File(scriptDir, "mtop.py").outputStream().use { output -> input.copyTo(output) }
+            }
+            val wrapper =
+                """
+                #!/bin/sh
+                # mtop - process monitor that reads /proc directly (installed by Operit).
+                if ! command -v python3 >/dev/null 2>&1; then
+                    echo "mtop: python3 is missing. Install it with: apt-get update && apt-get install -y python3" >&2
+                    exit 127
+                fi
+                exec python3 /usr/local/lib/operit/mtop.py "${'$'}@"
+                """.trimIndent() + "\n"
+            target.parentFile?.mkdirs()
+            target.outputStream().use { output ->
+                output.write(wrapper.replace("\r\n", "\n").replace("\r", "\n").toByteArray())
+            }
+            target.setExecutable(true, false)
+            marker.writeText(MTOP_VERSION)
+            Log.d(TAG, "Installed mtop into the guest at ${target.absolutePath}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not install mtop into the guest", e)
+        }
     }
 
     private fun extractAssets() {
