@@ -2654,12 +2654,19 @@ class CanvasTerminalView @JvmOverloads constructor(
     private fun showSoftKeyboard() {
         if (isFocusableInTouchMode) requestFocus()
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        // Dacă sesiunea IME e moartă (view-ul a fost detașat o clipă, fereastra și-a pierdut
+        // focusul, sau IME-ul a rămas agățat de un view vechi după un program full-screen
+        // ca htop), `showSoftInput` nu mai are efect. `restartInput` recreatează conexiunea.
+        if (imm?.isActive(this) != true) {
+            imm?.restartInput(this)
+        }
         imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
         if (imm?.isAcceptingText != true) {
             postDelayed(
                 {
                     if (imm?.isAcceptingText != true) {
                         requestFocus()
+                        imm?.restartInput(this)
                         imm?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
                     }
                 },
