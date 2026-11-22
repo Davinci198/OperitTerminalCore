@@ -684,6 +684,19 @@ class CanvasTerminalView @JvmOverloads constructor(
 
     private fun isMouseReportingActive(): Boolean = emulator?.isMouseTrackingEnabled() == true
 
+    /**
+     * 模拟器用纯黑表示“默认背景”（普通空格单元）。画布已用 config.backgroundColor 铺满全屏，
+     * 所以把默认背景当成“透出画布”的颜色，终端主体才会和面板同色，而不是留下一块黑底
+     * 或右侧一条比字符列更窄的窄条。
+     */
+    private fun effectiveCellBackground(bgColor: Int): Int =
+        if (bgColor == DEFAULT_TERMINAL_BACKGROUND) config.backgroundColor else bgColor
+
+    private companion object {
+        /** AnsiTerminalEmulator 里默认单元的 bgColor。 */
+        val DEFAULT_TERMINAL_BACKGROUND = Color.BLACK
+    }
+
     /** 可见视口内的单元格坐标，1-based（与鼠标上报协议一致）。 */
     private fun screenCellAt(x: Float, y: Float): Pair<Int, Int> {
         val charW = textMetrics.charWidth.coerceAtLeast(1f)
@@ -2043,16 +2056,17 @@ class CanvasTerminalView @JvmOverloads constructor(
             val termChar = line[col]
             val cellWidth = textMetrics.getCellWidth(termChar.char)
             val actualCharWidth = charWidth * cellWidth
+            val cellBg = effectiveCellBackground(termChar.bgColor)
             
-            if (termChar.bgColor != config.backgroundColor) {
-                if (currentBgColor != termChar.bgColor) {
+            if (cellBg != config.backgroundColor) {
+                if (currentBgColor != cellBg) {
                     // Flush previous BG
                     currentBgColor?.let {
                         bgPaint.color = it
                         canvas.drawRect(bgStartX, y, bgStartX + bgRunWidth, y + charHeight, bgPaint)
                     }
                     // Start new BG run
-                    currentBgColor = termChar.bgColor
+                    currentBgColor = cellBg
                     bgStartX = startX + (if (col == 0) 0f else getXOffsetForCol(line, col, charWidth))
                     bgRunWidth = 0f
                 }
